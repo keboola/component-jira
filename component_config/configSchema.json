@@ -1,0 +1,63 @@
+{
+  "type": "object",
+  "required": [
+    "username",
+    "#token",
+    "organization_id",
+    "datasets",
+    "incremental"
+  ],
+  "properties": {
+    "username": {
+      "type": "string",
+      "title": "Username",
+      "description": "A username to Atlassian Cloud; usually an email.",
+      "minLength": 1,
+      "propertyOrder": 100
+    },
+    "#token": {
+      "type": "string",
+      "format": "password",
+      "title": "API Token",
+      "description": "An API token to Atlassian Cloud.</br>A token can be generated in <a href='https://id.atlassian.com/manage/api-tokens' target='_blank'>manage your account</a> section.",
+      "propertyOrder": 200
+    },
+    "organization_id": {
+      "type": "string",
+      "title": "Organization ID",
+      "description": "An ID of the organization, for which the data will be downloaded. Can be found in the first part of the URL, i.e. <a href='https://<organization_id>.atlassian.net'>https://&ltorganization_id&gt.atlassian.net</a>.",
+      "propertyOrder": 300
+    },
+    "datasets": {
+      "type": "array",
+      "format": "table",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "issues",
+          "worklogs"
+        ],
+        "type": "string"
+      },
+      "default": [
+        "issues",
+        "worklogs"
+      ],
+      "propertyOrder": 400
+    },
+    "incremental": {
+      "type": "number",
+      "title": "Load Type",
+      "enum": [
+        1,
+        0
+      ],
+      "options": {
+        "enum_titles": [
+          "Incremental Load",
+          "Full Load"
+        ]
+      }
+    }
+  }
+}
