@@ -112,7 +112,7 @@ class JiraWriter:
                 _dictToWrite = {**_dictToWrite, **parentDict}
 
             if _cust is not None:
-                _dictToWrite = {**_dictToWrite, **{'custom_fields': _cust}}
+                _dictToWrite = {**_dictToWrite, **{'custom_fields': json.dumps(_cust)}}
 
             self.writer.writerow(_dictToWrite)
 
