@@ -5,7 +5,8 @@
     "#token",
     "organization_id",
     "datasets",
-    "incremental"
+    "incremental",
+    "since"
   ],
   "properties": {
     "username": {
@@ -27,6 +28,13 @@
       "title": "Organization ID",
       "description": "An ID of the organization, for which the data will be downloaded. Can be found in the first part of the URL, i.e. <a href='https://<organization_id>.atlassian.net'>https://&ltorganization_id&gt.atlassian.net</a>.",
       "propertyOrder": 300
+    },
+    "since": {
+      "type": "string",
+      "title": "Date Range",
+      "description": "Date, since when the data will be downloaded. Can be specified absolutely (e.g. '2020-01-01') or relatively (e.g. '2 days ago', '1 month ago').",
+      "default": "3 days ago",
+      "propertyOrder": 350
     },
     "datasets": {
       "type": "array",
