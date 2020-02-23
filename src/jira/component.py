@@ -23,7 +23,13 @@ class JiraComponent(KBCEnvHandler):
     def __init__(self):
 
         super().__init__(mandatory_params=MANDATORY_PARAMS, log_level='DEBUG')
-        self.validate_config(mandatory_params=MANDATORY_PARAMS)
+
+        try:
+            self.validate_config(mandatory_params=MANDATORY_PARAMS)
+
+        except ValueError as e:
+            logging.exception(e)
+            sys.exit(1)
 
         self.param_username = self.cfg_params[KEY_USERNAME]
         self.param_token = self.cfg_params[KEY_TOKEN]

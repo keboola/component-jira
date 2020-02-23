@@ -1,0 +1,1 @@
+{"incremental": true, "primary_key": ["worklog_id"], "columns": ["worklog_id", "updated_time"]}

@@ -1,2 +1,7 @@
-Testing functional sample extractor for purposes of the python component template. 
-Implements partial Hubspot extractor using the public sandbox token.
+# Jira extractor
+
+Jira is a proprietary issue tracking product developed by Atlassian that allows bug tracking and agile project management. A Jira extractor for Keboola Connection allows to download data about projects, issues and time worked on each issue.
+
+## Configuration
+
+A sample configuration can be found in the [component's repository](https://bitbucket.org/kds_consulting_team/kds-team.ex-jira/src/master/component_config/sample-config/config.json).

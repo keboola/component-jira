@@ -1,0 +1,1 @@
+{"incremental": true, "primary_key": ["id", "key"], "columns": ["id", "key", "name", "project_category_id", "project_category_name", "project_type_key", "is_private"]}

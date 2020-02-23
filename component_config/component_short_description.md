@@ -1,1 +1,1 @@
-Testing functional sample extractor for purposes of the python component template. 
+Jira is a proprietary issue tracking product developed by Atlassian that allows bug tracking and agile project management.

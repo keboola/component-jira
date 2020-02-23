@@ -40,6 +40,7 @@
     "datasets": {
       "type": "array",
       "format": "table",
+      "title": "Datasets",
       "uniqueItems": true,
       "items": {
         "enum": [
