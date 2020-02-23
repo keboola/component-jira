@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "title": "",
+  "title": "Parameters",
   "required": [
     "username",
     "#token",
