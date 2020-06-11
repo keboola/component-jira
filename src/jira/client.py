@@ -70,7 +70,7 @@ class JiraClient(HttpClientBase):
                     offset += MAX_RESULTS
 
             else:
-                logging.exception(f"Could not download issues.")
+                logging.exception("Could not download issues.")
                 logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
                 sys.exit(1)
 
