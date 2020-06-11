@@ -39,7 +39,7 @@
     },
     "datasets": {
       "type": "array",
-      "format": "table",
+      "format": "select",
       "title": "Datasets",
       "uniqueItems": true,
       "items": {
