@@ -5,6 +5,7 @@
     "username",
     "#token",
     "organization_id",
+    "organization_url",
     "datasets",
     "incremental",
     "since"
@@ -29,6 +30,16 @@
       "title": "Organization ID",
       "description": "An ID of the organization, for which the data will be downloaded. Can be found in the first part of the URL, i.e. <a href='https://<organization_id>.atlassian.net'>https://&ltorganization_id&gt.atlassian.net</a>.",
       "propertyOrder": 300
+    },
+    "organization_url": {
+      "type": "string",
+      "title": "Organization URL",
+      "description": "URL which will be used to download data from your organization.",
+      "template": "https://{{org_id}}.atlassian.net",
+      "watch": {
+        "org_id": "organization_id"
+      },
+      "propertyOrder": 325
     },
     "since": {
       "type": "string",
