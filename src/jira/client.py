@@ -214,3 +214,6 @@ class JiraClient(HttpClientBase):
                 sys.exit(1)
 
         return all_worklogs
+
+    def get_changelogs(self, issue_key):
+        pass

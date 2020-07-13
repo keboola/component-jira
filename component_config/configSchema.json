@@ -54,8 +54,16 @@
       "title": "Datasets",
       "uniqueItems": true,
       "items": {
+        "options": {
+          "enum_titles": [
+            "Issues",
+            "Issues Changelogs",
+            "Worklogs"
+          ]
+        },
         "enum": [
           "issues",
+          "issues_changelogs",
           "worklogs"
         ],
         "type": "string"
