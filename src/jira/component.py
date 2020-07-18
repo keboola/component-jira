@@ -120,7 +120,8 @@ class JiraComponent(KBCEnvHandler):
         if 'issues_changelogs' in self.param_datasets:
             all_changelogs = []
             for issue_key in download_further_changelogs:
-                _changelogs += [{**c, **{'issue_key': issue_key}} for c in self.client.get_changelogs(issue_key)]
+                _changelogs_issue = self.client.get_changelogs(issue_key)
+                _changelogs += [{**c, **{'issue_key': issue_key}} for c in _changelogs_issue]
 
             for changelog in _changelogs:
                 _out = dict()
@@ -128,7 +129,7 @@ class JiraComponent(KBCEnvHandler):
                 _out['id'] = changelog['id']
                 _out['issue_key'] = changelog['issue_key']
                 _out['author_accountId'] = changelog['author']['accountId']
-                _out['author_emailAddress'] = changelog['author']['emailAddress']
+                _out['author_emailAddress'] = changelog['author'].get('emailAddress', '')
                 _out['created'] = changelog['created']
 
                 for idx, item in enumerate(changelog['items'], start=1):
@@ -149,7 +150,7 @@ class JiraComponent(KBCEnvHandler):
         self.get_and_write_users()
 
         if 'issues' in self.param_datasets:
-            logging.info("Download issues.")
+            logging.info("Downloading issues.")
             self.get_and_write_issues()
 
         if 'worklogs' in self.param_datasets:

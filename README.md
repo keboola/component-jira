@@ -31,7 +31,7 @@ All parameters, except parameter for load type, are required.
     - **type:** required
     - **configuration name:** `datasets`
     - **description:** An array of objects, which will be downloaded.
-    - **possible values:** `issues`, `worklogs`
+    - **possible values:** `issues`, `issues_changelogs`, `worklogs`
 - **Load Type**
     - **type:** optional
     - **configuration name:** `incremental`

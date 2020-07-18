@@ -59,7 +59,8 @@ class JiraClient(HttpClientBase):
             sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
 
             if sc_changelogs == 200:
-                all_changelogs += [js_changelogs['values']]
+                all_changelogs += js_changelogs['values']
+                offset += MAX_RESULTS
                 is_complete = js_changelogs['isLast']
 
             else:
