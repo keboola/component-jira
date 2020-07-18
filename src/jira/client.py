@@ -42,6 +42,33 @@ class JiraClient(HttpClientBase):
             logging.exception(f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
             sys.exit(1)
 
+    def get_changelogs(self, issue_key):
+
+        url_changelogs = urljoin(self.base_url, f'issue/{issue_key}/changelog')
+        offset = 0
+        all_changelogs = []
+        is_complete = False
+
+        while is_complete is False:
+            params_changelogs = {
+                'startAt': offset,
+                'maxResults': MAX_RESULTS
+            }
+
+            rsp_changelogs = self.get_raw(url=url_changelogs, params=params_changelogs)
+            sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
+
+            if sc_changelogs == 200:
+                all_changelogs += [js_changelogs['values']]
+                is_complete = js_changelogs['isLast']
+
+            else:
+                logging.error(f"Could not download changelogs for issue {issue_key}.")
+                logging.error(f"Received: {sc_changelogs} - {js_changelogs}.")
+                sys.exit(1)
+
+        return all_changelogs
+
     def get_all_issues(self, update_date=None):
 
         url_issues = urljoin(self.param_base_url, 'search')
@@ -54,7 +81,8 @@ class JiraClient(HttpClientBase):
             params_issues = {
                 'startAt': offset,
                 'jql': param_jql,
-                'maxResults': MAX_RESULTS
+                'maxResults': MAX_RESULTS,
+                'expand': 'changelog'
             }
 
             rsp_issues = self.get_raw(url=url_issues, params=params_issues)
@@ -214,6 +242,3 @@ class JiraClient(HttpClientBase):
                 sys.exit(1)
 
         return all_worklogs
-
-    def get_changelogs(self, issue_key):
-        pass

@@ -14,7 +14,6 @@ KEY_SINCE = 'since'
 KEY_INCREMENTAL = 'incremental'
 KEY_DATASETS = 'datasets'
 
-
 MANDATORY_PARAMS = [KEY_USERNAME, KEY_TOKEN, KEY_ORGANIZATION, KEY_SINCE, KEY_DATASETS]
 
 
@@ -22,7 +21,11 @@ class JiraComponent(KBCEnvHandler):
 
     def __init__(self):
 
-        super().__init__(mandatory_params=MANDATORY_PARAMS, log_level='DEBUG')
+        super().__init__(mandatory_params=MANDATORY_PARAMS, log_level='INFO')
+
+        if self.cfg_params.get('debug', False) is True:
+            logger = logging.getLogger()
+            logger.setLevel(level='DEBUG')
 
         try:
             self.validate_config(mandatory_params=MANDATORY_PARAMS)
@@ -52,54 +55,103 @@ class JiraComponent(KBCEnvHandler):
                                  username=self.param_username,
                                  api_token=self.param_token)
 
+    def get_and_write_projects(self):
+
+        projects = self.client.get_projects()
+        JiraWriter(self.tables_out_path, 'projects', self.param_incremental).writerows(projects)
+
+    def get_and_write_users(self):
+        users = self.client.get_users()
+        JiraWriter(self.tables_out_path, 'users', self.param_incremental).writerows(users)
+
+    def get_and_write_fields(self):
+        fields = self.client.get_fields()
+        JiraWriter(self.tables_out_path, 'fields', self.param_incremental).writerows(fields)
+
+    def get_and_write_worklogs(self):
+
+        _worklogs_u = [w['worklogId'] for w in self.client.get_updated_worklogs(self.param_since_unix)]
+        worklogs = self.client.get_worklogs(_worklogs_u)
+        JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental).writerows(worklogs)
+
+        worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
+        JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental).writerows(worklogs_deleted)
+
+    def get_and_write_issues(self):
+        issues = self.client.get_all_issues(self.param_since_date)
+        issues_f = []
+
+        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental)
+
+        if 'issues_changelogs' in self.param_datasets:
+            writer_changelogs = JiraWriter(self.tables_out_path, 'issues-changelogs', self.param_incremental)
+            _changelogs = []
+            download_further_changelogs = []
+
+        for issue in issues:
+
+            _out = {
+                'id': issue['id'],
+                'key': issue['key']
+            }
+
+            _custom = {}
+
+            for key, value in issue['fields'].items():
+                if 'customfield_' in key:
+                    _custom[key] = value
+                else:
+                    _out[key] = value
+
+            _out['custom_fields'] = _custom
+            issues_f += [copy.deepcopy(_out)]
+
+            if 'issues_changelogs' in self.param_datasets:
+                _changelog = issue['changelog']
+
+                if _changelog['maxResults'] < _changelog['total']:
+                    download_further_changelogs += [issue['key']]
+
+                else:
+                    _changelogs += [{**x, **{'issue_key': issue['key']}} for x in _changelog['histories']]
+
+        writer_issues.writerows(issues_f)
+
+        if 'issues_changelogs' in self.param_datasets:
+            all_changelogs = []
+            for issue_key in download_further_changelogs:
+                _changelogs += [{**c, **{'issue_key': issue_key}} for c in self.client.get_changelogs(issue_key)]
+
+            for changelog in _changelogs:
+                _out = dict()
+                _out['total_changed_items'] = len(changelog['items'])
+                _out['id'] = changelog['id']
+                _out['issue_key'] = changelog['issue_key']
+                _out['author_accountId'] = changelog['author']['accountId']
+                _out['author_emailAddress'] = changelog['author']['emailAddress']
+                _out['created'] = changelog['created']
+
+                for idx, item in enumerate(changelog['items'], start=1):
+                    item['changed_item_order'] = idx
+                    all_changelogs += [{**_out, **item}]
+
+            writer_changelogs.writerows(all_changelogs)
+
     def run(self):
 
-        top = self.tables_out_path
-        inc = self.param_incremental
-
         logging.info("Downloading projects.")
-        projects = self.client.get_projects()
-        JiraWriter(top, 'projects', inc).writerows(projects)
+        self.get_and_write_projects()
 
         logging.info("Downloading a list of fields.")
-        fields = self.client.get_fields()
-        JiraWriter(top, 'fields', inc).writerows(fields)
+        self.get_and_write_fields()
 
         logging.info("Downloading users.")
-        users = self.client.get_users()
-        JiraWriter(top, 'users', inc).writerows(users)
+        self.get_and_write_users()
 
         if 'issues' in self.param_datasets:
-
-            logging.info("Downloading issues.")
-            issues = self.client.get_all_issues(self.param_since_date)
-            issues_f = []
-
-            for i in issues:
-                _out = {
-                    'id': i['id'],
-                    'key': i['key']
-                }
-
-                _custom = {}
-
-                for key, value in i['fields'].items():
-                    if 'customfield_' in key:
-                        _custom[key] = value
-                    else:
-                        _out[key] = value
-
-                _out['custom_fields'] = _custom
-                issues_f += [copy.deepcopy(_out)]
-
-            JiraWriter(top, 'issues', inc).writerows(issues_f)
+            logging.info("Download issues.")
+            self.get_and_write_issues()
 
         if 'worklogs' in self.param_datasets:
-
             logging.info("Downloading worklogs.")
-            _worklogs_u = [w['worklogId'] for w in self.client.get_updated_worklogs(self.param_since_unix)]
-            worklogs = self.client.get_worklogs(_worklogs_u)
-            JiraWriter(top, 'worklogs', inc).writerows(worklogs)
-
-            worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
-            JiraWriter(top, 'worklogs-deleted', inc).writerows(worklogs_deleted)
+            self.get_and_write_worklogs()

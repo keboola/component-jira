@@ -57,11 +57,13 @@
         "options": {
           "enum_titles": [
             "Issues",
+            "Issues Changelogs",
             "Worklogs"
           ]
         },
         "enum": [
           "issues",
+          "issues_changelogs",
           "worklogs"
         ],
         "type": "string"

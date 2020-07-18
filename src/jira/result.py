@@ -51,6 +51,15 @@ FIELDS_R_WORKLOGS = ['id', 'issue_id', 'author_account_id', 'author_display_name
 PK_WORKLOGS = ['id']
 JSON_WORKLOGS = []
 
+FIELDS_ISSUES_CHANGELOGS = ['id', 'issue_key', 'author_accountId', 'author_emailAddress', 'created',
+                            'total_changed_items', 'changed_item_order', 'field', 'fieldtype', 'from', 'fromString',
+                            'to', 'toString']
+FIELDS_R_ISSUES_CHANGELOGS = ['id', 'issue_key', 'author_account_id', 'author_email_address', 'created',
+                              'total_changed_items', 'changed_item_order', 'field', 'field_type', 'from', 'from_string',
+                              'to', 'to_string']
+PK_ISSUES_CHANGELOGS = ['id', 'issue_key', 'field']
+JSON_ISSUES_CHANGELOGS = []
+
 
 class JiraWriter:
 
