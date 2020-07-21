@@ -61,10 +61,12 @@ class JiraComponent(KBCEnvHandler):
         JiraWriter(self.tables_out_path, 'projects', self.param_incremental).writerows(projects)
 
     def get_and_write_users(self):
+
         users = self.client.get_users()
         JiraWriter(self.tables_out_path, 'users', self.param_incremental).writerows(users)
 
     def get_and_write_fields(self):
+
         fields = self.client.get_fields()
         JiraWriter(self.tables_out_path, 'fields', self.param_incremental).writerows(fields)
 
@@ -78,50 +80,68 @@ class JiraComponent(KBCEnvHandler):
         JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental).writerows(worklogs_deleted)
 
     def get_and_write_issues(self):
-        issues = self.client.get_all_issues(self.param_since_date)
-        issues_f = []
+        offset = 0
+        is_complete = False
 
         writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental)
 
         if 'issues_changelogs' in self.param_datasets:
             writer_changelogs = JiraWriter(self.tables_out_path, 'issues-changelogs', self.param_incremental)
-            _changelogs = []
             download_further_changelogs = []
 
-        for issue in issues:
+        while is_complete is False:
 
-            _out = {
-                'id': issue['id'],
-                'key': issue['key']
-            }
+            issues, is_complete, offset = self.client.get_issues(self.param_since_date, offset=offset)
+            issues_f = []
 
-            _custom = {}
+            for issue in issues:
 
-            for key, value in issue['fields'].items():
-                if 'customfield_' in key:
-                    _custom[key] = value
-                else:
-                    _out[key] = value
+                _out = {
+                    'id': issue['id'],
+                    'key': issue['key']
+                }
 
-            _out['custom_fields'] = _custom
-            issues_f += [copy.deepcopy(_out)]
+                _custom = {}
 
-            if 'issues_changelogs' in self.param_datasets:
-                _changelog = issue['changelog']
+                for key, value in issue['fields'].items():
+                    if 'customfield_' in key:
+                        _custom[key] = value
+                    else:
+                        _out[key] = value
 
-                if _changelog['maxResults'] < _changelog['total']:
-                    download_further_changelogs += [issue['key']]
+                _out['custom_fields'] = _custom
+                issues_f += [copy.deepcopy(_out)]
 
-                else:
-                    _changelogs += [{**x, **{'issue_key': issue['key']}} for x in _changelog['histories']]
+                if 'issues_changelogs' in self.param_datasets:
+                    _changelog = issue['changelog']
 
-        writer_issues.writerows(issues_f)
+                    if _changelog['maxResults'] < _changelog['total']:
+                        download_further_changelogs += [issue['key']]
 
-        if 'issues_changelogs' in self.param_datasets:
+                    else:
+                        all_changelogs = []
+                        _changelogs = [{**x, **{'issue_key': issue['key']}} for x in _changelog['histories']]
+
+                        for changelog in _changelogs:
+                            _out = dict()
+                            _out['total_changed_items'] = len(changelog['items'])
+                            _out['id'] = changelog['id']
+                            _out['issue_key'] = changelog['issue_key']
+                            _out['author_accountId'] = changelog['author']['accountId']
+                            _out['author_emailAddress'] = changelog['author'].get('emailAddress', '')
+                            _out['created'] = changelog['created']
+
+                            for idx, item in enumerate(changelog['items'], start=1):
+                                item['changed_item_order'] = idx
+                                all_changelogs += [{**_out, **item}]
+
+                        writer_changelogs.writerows(all_changelogs)
+
+            writer_issues.writerows(issues_f)
+
+        for issue_key in download_further_changelogs:
             all_changelogs = []
-            for issue_key in download_further_changelogs:
-                _changelogs_issue = self.client.get_changelogs(issue_key)
-                _changelogs += [{**c, **{'issue_key': issue_key}} for c in _changelogs_issue]
+            _changelogs = [{**c, **{'issue_key': issue_key}} for c in self.client.get_changelogs(issue_key)]
 
             for changelog in _changelogs:
                 _out = dict()

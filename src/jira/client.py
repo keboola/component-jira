@@ -70,40 +70,36 @@ class JiraClient(HttpClientBase):
 
         return all_changelogs
 
-    def get_all_issues(self, update_date=None):
+    def get_issues(self, update_date=None, offset=0):
 
         url_issues = urljoin(self.param_base_url, 'search')
         param_jql = f'updated >= {update_date}' if update_date is not None else None
-        offset = 0
-        all_issues = []
         is_complete = False
 
-        while is_complete is False:
-            params_issues = {
-                'startAt': offset,
-                'jql': param_jql,
-                'maxResults': MAX_RESULTS,
-                'expand': 'changelog'
-            }
+        params_issues = {
+            'startAt': offset,
+            'jql': param_jql,
+            'maxResults': MAX_RESULTS,
+            'expand': 'changelog'
+        }
 
-            rsp_issues = self.get_raw(url=url_issues, params=params_issues)
+        rsp_issues = self.get_raw(url=url_issues, params=params_issues)
 
-            if rsp_issues.status_code == 200:
-                _iss = rsp_issues.json()['issues']
-                all_issues += _iss
+        if rsp_issues.status_code == 200:
+            issues = rsp_issues.json()['issues']
 
-                if len(_iss) < MAX_RESULTS:
-                    is_complete = True
-
-                else:
-                    offset += MAX_RESULTS
+            if len(issues) < MAX_RESULTS:
+                is_complete = True
 
             else:
-                logging.exception("Could not download issues.")
-                logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
-                sys.exit(1)
+                offset += MAX_RESULTS
 
-        return all_issues
+            return issues, is_complete, offset
+
+        else:
+            logging.exception("Could not download issues.")
+            logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
+            sys.exit(1)
 
     def get_users(self):
 
