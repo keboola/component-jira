@@ -82,12 +82,12 @@ class JiraComponent(KBCEnvHandler):
     def get_and_write_issues(self):
         offset = 0
         is_complete = False
+        download_further_changelogs = []
 
         writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental)
 
         if 'issues_changelogs' in self.param_datasets:
             writer_changelogs = JiraWriter(self.tables_out_path, 'issues-changelogs', self.param_incremental)
-            download_further_changelogs = []
 
         while is_complete is False:
 
