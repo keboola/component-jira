@@ -4,7 +4,9 @@ from urllib.parse import urljoin
 from kbc.client_base import HttpClientBase
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
+AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
 MAX_RESULTS = 100
+MAX_RESULTS_AGILE = 50
 
 
 class JiraClient(HttpClientBase):
@@ -12,6 +14,7 @@ class JiraClient(HttpClientBase):
     def __init__(self, organization_id, username, api_token):
 
         self.param_base_url = BASE_URL.format(organization_id)
+        self.param_agile_url = AGILE_URL.format(organization_id)
         self.param_username = username
         self.param_api_token = api_token
 
@@ -26,7 +29,6 @@ class JiraClient(HttpClientBase):
     def get_projects(self):
 
         url_projects = urljoin(self.base_url, 'project')
-
         rsp_projects = self.get_raw(url=url_projects)
 
         if rsp_projects.status_code == 200:
@@ -239,3 +241,98 @@ class JiraClient(HttpClientBase):
                 sys.exit(1)
 
         return all_worklogs
+
+    def get_all_boards(self):
+
+        url_boards = urljoin(self.param_agile_url, 'board')
+        offset = 0
+        is_complete = False
+        all_boards = []
+
+        while is_complete is False:
+            params_boards = {
+                'startAt': offset,
+                'maxResults': MAX_RESULTS_AGILE
+            }
+
+            rsp_boards = self.get_raw(url=url_boards, params=params_boards)
+
+            if rsp_boards.status_code == 200:
+                _brd = rsp_boards.json()
+                all_boards += _brd['values']
+                is_complete = _brd['isLast']
+                offset += MAX_RESULTS_AGILE
+
+            else:
+                logging.exception("Could not download boards.")
+                logging.error(f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
+                sys.exit(1)
+
+        return all_boards
+
+    def get_board_sprints(self, board_id):
+
+        url_sprints = urljoin(self.param_agile_url, f'board/{board_id}/sprint')
+        offset = 0
+        is_complete = False
+        all_sprints = []
+
+        while is_complete is False:
+            params_sprints = {
+                'startAt': offset,
+                'maxResults': MAX_RESULTS_AGILE
+            }
+
+            rsp_sprints = self.get_raw(url_sprints, params=params_sprints)
+
+            if rsp_sprints.status_code == 200:
+                _sprt = rsp_sprints.json()
+                all_sprints += _sprt['values']
+                is_complete = _sprt['isLast']
+                offset += MAX_RESULTS_AGILE
+
+            elif rsp_sprints.status_code == 400 and \
+                    'The board does not support sprints' in rsp_sprints.json()['errorMessages']:
+                break
+
+            else:
+                logging.exception(f"Could not download sprints for board {board_id}.")
+                logging.error(f"Received: {rsp_sprints.status_code} - {rsp_sprints.text}.")
+                sys.exit(1)
+
+        return all_sprints
+
+    def get_sprint_issues(self, sprint_id, update_date=None):
+
+        url_issues = urljoin(self.param_agile_url, f'sprint/{sprint_id}/issue')
+        param_jql = f'updated >= {update_date}' if update_date is not None else None
+        is_complete = False
+        offset = 0
+        all_issues = []
+
+        while is_complete is False:
+            params_issues = {
+                'startAt': offset,
+                'maxResults': MAX_RESULTS,
+                'jql': param_jql,
+                'fields': 'id,key'
+            }
+
+            rsp_issues = self.get_raw(url_issues, params=params_issues)
+
+            if rsp_issues.status_code == 200:
+                _iss = rsp_issues.json()['issues']
+                all_issues += _iss
+
+                if len(_iss) < MAX_RESULTS:
+                    is_complete = True
+
+                else:
+                    offset += MAX_RESULTS
+
+            else:
+                logging.exception(f"Could not download issues for sprint {sprint_id}.")
+                logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
+                sys.exit(1)
+
+        return all_issues

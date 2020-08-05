@@ -60,6 +60,23 @@ FIELDS_R_ISSUES_CHANGELOGS = ['id', 'issue_key', 'author_account_id', 'author_em
 PK_ISSUES_CHANGELOGS = ['id', 'issue_key', 'field']
 JSON_ISSUES_CHANGELOGS = []
 
+FIELDS_BOARDS = ['id', 'self', 'name', 'type', 'location_projectId']
+FIELDS_R_BOARDS = ['id', 'url', 'name', 'type', 'project_id']
+PK_BOARDS = ['id']
+JSON_BOARDS = []
+
+FIELDS_SPRINTS = ['id', 'board_id', 'self', 'state', 'name', 'startDate', 'endDate',
+                  'completeDate', 'originBoardId', 'goal']
+FIELDS_R_SPRINTS = ['id', 'board_id', 'url', 'state', 'name', 'start_date', 'end_date',
+                    'complete_date', 'origin_board_id', 'goal']
+PK_SPRINTS = ['id']
+JSON_SPRINTS = []
+
+FIELDS_SPRINTS_ISSUES = ['id', 'sprint_id', 'key']
+FIELDS_R_SPRINTS_ISSUES = ['issue_id', 'sprint_id', 'issue_key']
+PK_SPRINTS_ISSUES = ['issue_id', 'sprint_id']
+JSON_SPRINTS_ISSUES = []
+
 
 class JiraWriter:
 

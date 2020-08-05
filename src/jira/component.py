@@ -158,6 +158,29 @@ class JiraComponent(KBCEnvHandler):
 
             writer_changelogs.writerows(all_changelogs)
 
+    def get_and_write_boards_and_sprints(self):
+
+        boards = self.client.get_all_boards()
+        _boards = [b['id'] for b in boards]
+        JiraWriter(self.tables_out_path, 'boards', self.param_incremental).writerows(boards)
+
+        sprint_writer = JiraWriter(self.tables_out_path, 'sprints', self.param_incremental)
+        all_sprints = []
+        for board in _boards:
+
+            sprints = self.client.get_board_sprints(board)
+            all_sprints += [s['id'] for s in sprints if
+                            s.get('completeDate', self.param_since_date) >= self.param_since_date]
+            sprints = [{**s, **{'board_id': board}} for s in sprints]
+            sprint_writer.writerows(sprints)
+
+        issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.param_incremental)
+        for sprint in set(all_sprints):
+
+            issues = self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
+            issues = [{**i, **{'sprint_id': sprint}} for i in issues]
+            issues_writer.writerows(issues)
+
     def run(self):
 
         logging.info("Downloading projects.")
@@ -172,6 +195,10 @@ class JiraComponent(KBCEnvHandler):
         if 'issues' in self.param_datasets:
             logging.info("Downloading issues.")
             self.get_and_write_issues()
+
+        if 'boards_n_sprints' in self.param_datasets:
+            logging.info("Downloading boards and sprints.")
+            self.get_and_write_boards_and_sprints()
 
         if 'worklogs' in self.param_datasets:
             logging.info("Downloading worklogs.")

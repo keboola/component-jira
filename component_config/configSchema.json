@@ -58,13 +58,15 @@
           "enum_titles": [
             "Issues",
             "Issues Changelogs",
-            "Worklogs"
+            "Worklogs",
+            "Boards & Sprints"
           ]
         },
         "enum": [
           "issues",
           "issues_changelogs",
-          "worklogs"
+          "worklogs",
+          "boards_n_sprints"
         ],
         "type": "string"
       },
