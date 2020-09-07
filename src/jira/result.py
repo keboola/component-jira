@@ -20,7 +20,7 @@ FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 
                    'creator_display_name', 'subtasks', 'reporter_account_id', 'reporter_display_name',
                    'aggregate_progress', 'aggregate_progress_total', 'environment', 'due_date', 'progress',
                    'progress_total', 'custom_fields']
-PK_ISSUES = ['id', 'key']
+PK_ISSUES = ['id']
 JSON_ISSUES = ['fixVersions', 'components', 'subtasks', 'custom_fields']
 
 FIELDS_USERS = ['accountId', 'displayName', 'active', 'accountType']
