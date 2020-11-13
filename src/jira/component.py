@@ -127,8 +127,8 @@ class JiraComponent(KBCEnvHandler):
                             _out['total_changed_items'] = len(changelog['items'])
                             _out['id'] = changelog['id']
                             _out['issue_key'] = changelog['issue_key']
-                            _out['author_accountId'] = changelog['author']['accountId']
-                            _out['author_emailAddress'] = changelog['author'].get('emailAddress', '')
+                            _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
+                            _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
                             _out['created'] = changelog['created']
 
                             for idx, item in enumerate(changelog['items'], start=1):
@@ -191,6 +191,9 @@ class JiraComponent(KBCEnvHandler):
 
         logging.info("Downloading users.")
         self.get_and_write_users()
+
+        if 'issues' not in self.param_datasets and 'issues_changelogs' in self.param_datasets:
+            logging.warning("Issues need to be enabled in order to download issues changelogs.")
 
         if 'issues' in self.param_datasets:
             logging.info("Downloading issues.")
