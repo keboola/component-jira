@@ -3,8 +3,8 @@ import dateparser
 import logging
 import sys
 from kbc.env_handler import KBCEnvHandler
-from jira.client import JiraClient
-from jira.result import JiraWriter
+from client import JiraClient
+from result import JiraWriter
 
 
 KEY_USERNAME = 'username'
@@ -116,16 +116,18 @@ class JiraComponent(KBCEnvHandler):
                     _changelog = issue['changelog']
 
                     if _changelog['maxResults'] < _changelog['total']:
-                        download_further_changelogs += [issue['key']]
+                        download_further_changelogs += [(issue['id'], issue['key'])]
 
                     else:
                         all_changelogs = []
-                        _changelogs = [{**x, **{'issue_key': issue['key']}} for x in _changelog['histories']]
+                        _changelogs = [{**x, **{'issue_id': issue['id'], 'issue_key': issue['key']}}
+                                       for x in _changelog['histories']]
 
                         for changelog in _changelogs:
                             _out = dict()
                             _out['total_changed_items'] = len(changelog['items'])
                             _out['id'] = changelog['id']
+                            _out['issue_id'] = changelog['issue_id']
                             _out['issue_key'] = changelog['issue_key']
                             _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
                             _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
@@ -139,14 +141,16 @@ class JiraComponent(KBCEnvHandler):
 
             writer_issues.writerows(issues_f)
 
-        for issue_key in download_further_changelogs:
+        for issue in download_further_changelogs:
             all_changelogs = []
-            _changelogs = [{**c, **{'issue_key': issue_key}} for c in self.client.get_changelogs(issue_key)]
+            _changelogs = [{**c, **{'issue_id': issue[0], 'issue_key': issue[1]}}
+                           for c in self.client.get_changelogs(issue[1])]
 
             for changelog in _changelogs:
                 _out = dict()
                 _out['total_changed_items'] = len(changelog['items'])
                 _out['id'] = changelog['id']
+                _out['issue_id'] = changelog['issue_id']
                 _out['issue_key'] = changelog['issue_key']
                 _out['author_accountId'] = changelog['author']['accountId']
                 _out['author_emailAddress'] = changelog['author'].get('emailAddress', '')

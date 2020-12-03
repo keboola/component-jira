@@ -1,4 +1,4 @@
-from jira.component import JiraComponent
+from component import JiraComponent
 
 if __name__ == "__main__":
     j = JiraComponent()

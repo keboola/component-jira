@@ -5,12 +5,9 @@ COPY . /code/
 
 # install gcc to be able to build packages - e.g. required by regex, dateparser, also required for pandas
 RUN apt-get update && apt-get install -y build-essential
-
 RUN pip install flake8
-
 RUN pip install -r /code/requirements.txt
-
 WORKDIR /code/
 
 
-CMD ["python", "-u", "/code/src/main.py"]
+CMD ["python", "-u", "/code/src/run.py"]
