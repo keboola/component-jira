@@ -7,8 +7,8 @@ FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issue
                  'fixVersions', 'aggregatetimespent', 'resolution', 'resolutiondate', 'workratio', 'lastViewed',
                  'created', 'priority_id', 'priority_name', 'labels', 'timeestimate', 'aggregatetimeoriginalestimate',
                  'assignee_accountId', 'assignee_displayName', 'updated', 'status_id', 'status_name', 'components',
-                 'timeoriginalestimate', 'security', 'aggregatetimeestimate', 'summary', 'creator_accountId',
-                 'creator_emailAddress', 'creator_displayName', 'subtasks', 'reporter_accountId',
+                 'timeoriginalestimate', 'security', 'aggregatetimeestimate', 'summary', 'description',
+                 'creator_accountId', 'creator_emailAddress', 'creator_displayName', 'subtasks', 'reporter_accountId',
                  'reporter_displayName', 'aggregateprogress_progress', 'aggregateprogress_total', 'environment',
                  'duedate', 'progress_progress', 'progress_total', 'custom_fields']
 FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 'issue_type_name', 'time_spent',
@@ -16,7 +16,7 @@ FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 
                    'last_viewed', 'created', 'priority_id', 'priority_name', 'labels', 'time_estimate',
                    'aggregate_time_original_estimate', 'assignee_account_id', 'assignee_display_name', 'updated',
                    'status_id', 'status_name', 'components', 'time_original_estimate', 'security',
-                   'aggregate_time_estimate', 'summary', 'creator_account_id', 'creator_email_address',
+                   'aggregate_time_estimate', 'summary', 'description', 'creator_account_id', 'creator_email_address',
                    'creator_display_name', 'subtasks', 'reporter_account_id', 'reporter_display_name',
                    'aggregate_progress', 'aggregate_progress_total', 'environment', 'due_date', 'progress',
                    'progress_total', 'custom_fields']
@@ -34,9 +34,9 @@ PK_FIELDS = ['id', 'key']
 JSON_FIELDS = []
 
 FIELDS_PROJECTS = ['id', 'key', 'name', 'projectCategory_id', 'projectCategory_name', 'projectCategory_description',
-                   'projectTypeKey', 'isPrivate']
+                   'projectTypeKey', 'isPrivate', 'archived']
 FIELDS_R_PROJECTS = ['id', 'key', 'name', 'project_category_id', 'project_category_name',
-                     'project_category_description', 'project_type_key', 'is_private']
+                     'project_category_description', 'project_type_key', 'is_private', 'archived']
 PK_PROJECTS = ['id', 'key']
 JSON_PROJECTS = []
 
@@ -46,9 +46,11 @@ PK_WORKLOGS_DELETED = ['worklog_id']
 JSON_WORKLOGS_DELETED = []
 
 FIELDS_WORKLOGS = ['id', 'issueId', 'author_accountId', 'author_displayName', 'updateAuthor_accountId',
-                   'updateAuthor_displayName', 'created', 'updated', 'started', 'timeSpent', 'timeSpentSeconds']
+                   'updateAuthor_displayName', 'created', 'updated', 'started', 'timeSpent', 'timeSpentSeconds',
+                   'comment']
 FIELDS_R_WORKLOGS = ['id', 'issue_id', 'author_account_id', 'author_display_name', 'update_author_account_id',
-                     'update_author_display_name', 'created', 'updated', 'started', 'time_spent', 'time_spent_seconds']
+                     'update_author_display_name', 'created', 'updated', 'started', 'time_spent', 'time_spent_seconds',
+                     'comment']
 PK_WORKLOGS = ['id']
 JSON_WORKLOGS = []
 

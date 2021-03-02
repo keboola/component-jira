@@ -74,10 +74,51 @@ class JiraComponent(KBCEnvHandler):
 
         _worklogs_u = [w['worklogId'] for w in self.client.get_updated_worklogs(self.param_since_unix)]
         worklogs = self.client.get_worklogs(_worklogs_u)
-        JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental).writerows(worklogs)
+
+        worklogs_out = []
+
+        for w in worklogs:
+            worklogs_out += [{**w, **{'comment': self.parse_description(w.get('comment', '')).strip('\n')}}]
+
+        JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental).writerows(worklogs_out)
 
         worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
         JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental).writerows(worklogs_deleted)
+
+    def parse_description(self, description) -> str:
+        if description is None:
+            return ''
+        text = ''
+
+        if 'content' in description:
+
+            text += self.parse_description(description['content'])
+
+            if description['type'] == 'paragraph':
+                text += '\n'
+
+        elif isinstance(description, dict):
+
+            if description['type'] == 'inlineCard':
+                text += description.get('attrs').get('url', '')
+            elif description['type'] == 'text':
+                text += description.get('text')
+            elif description['type'] == 'hardBreak':
+                text += '\n'
+            elif description['type'] == 'mention':
+                text += description.get('attrs').get('text', '')
+            else:
+                text += ''
+
+        elif isinstance(description, list):
+
+            for list_item in description:
+                text += self.parse_description(list_item)
+
+        else:
+            pass
+
+        return text
 
     def get_and_write_issues(self):
         offset = 0
@@ -106,6 +147,8 @@ class JiraComponent(KBCEnvHandler):
                 for key, value in issue['fields'].items():
                     if 'customfield_' in key:
                         _custom[key] = value
+                    elif key == 'description':
+                        _out['description'] = self.parse_description(issue['fields']['description']).strip('\n')
                     else:
                         _out[key] = value
 
