@@ -10,7 +10,7 @@ FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issue
                  'timeoriginalestimate', 'security', 'aggregatetimeestimate', 'summary', 'creator_accountId',
                  'creator_emailAddress', 'creator_displayName', 'subtasks', 'reporter_accountId',
                  'reporter_displayName', 'aggregateprogress_progress', 'aggregateprogress_total', 'environment',
-                 'due_date', 'progress_progress', 'progress_total', 'custom_fields']
+                 'duedate', 'progress_progress', 'progress_total', 'custom_fields']
 FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 'issue_type_name', 'time_spent',
                    'project_key', 'fix_versions', 'aggregate_time_spent', 'resolution', 'resolution_date', 'work_ratio',
                    'last_viewed', 'created', 'priority_id', 'priority_name', 'labels', 'time_estimate',
@@ -23,8 +23,8 @@ FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 
 PK_ISSUES = ['id']
 JSON_ISSUES = ['fixVersions', 'components', 'subtasks', 'custom_fields']
 
-FIELDS_USERS = ['accountId', 'displayName', 'active', 'accountType']
-FIELDS_R_USERS = ['account_id', 'display_name', 'active', 'account_type']
+FIELDS_USERS = ['accountId', 'displayName', 'active', 'accountType', 'emailAddress', 'locale']
+FIELDS_R_USERS = ['account_id', 'display_name', 'active', 'account_type', 'email_address', 'locale']
 PK_USERS = ['account_id']
 JSON_USERS = []
 
@@ -33,9 +33,10 @@ FIELDS_R_FIELDS = FIELDS_FIELDS
 PK_FIELDS = ['id', 'key']
 JSON_FIELDS = []
 
-FIELDS_PROJECTS = ['id', 'key', 'name', 'projectCategory_id', 'projectCategory_name', 'projectTypeKey', 'isPrivate']
-FIELDS_R_PROJECTS = ['id', 'key', 'name', 'project_category_id', 'project_category_name', 'project_type_key',
-                     'is_private']
+FIELDS_PROJECTS = ['id', 'key', 'name', 'projectCategory_id', 'projectCategory_name', 'projectCategory_description',
+                   'projectTypeKey', 'isPrivate']
+FIELDS_R_PROJECTS = ['id', 'key', 'name', 'project_category_id', 'project_category_name',
+                     'project_category_description', 'project_type_key', 'is_private']
 PK_PROJECTS = ['id', 'key']
 JSON_PROJECTS = []
 
