@@ -29,7 +29,8 @@ class JiraClient(HttpClientBase):
     def get_projects(self):
 
         url_projects = urljoin(self.base_url, 'project')
-        rsp_projects = self.get_raw(url=url_projects)
+        par_projects = {'expand': 'description'}
+        rsp_projects = self.get_raw(url=url_projects, params=par_projects)
 
         if rsp_projects.status_code == 200:
             return rsp_projects.json()

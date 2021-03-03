@@ -33,10 +33,12 @@ FIELDS_R_FIELDS = FIELDS_FIELDS
 PK_FIELDS = ['id', 'key']
 JSON_FIELDS = []
 
-FIELDS_PROJECTS = ['id', 'key', 'name', 'projectCategory_id', 'projectCategory_name', 'projectCategory_description',
-                   'projectTypeKey', 'isPrivate', 'archived']
-FIELDS_R_PROJECTS = ['id', 'key', 'name', 'project_category_id', 'project_category_name',
-                     'project_category_description', 'project_type_key', 'is_private', 'archived']
+FIELDS_PROJECTS = ['id', 'key', 'name', 'description', 'projectCategory_id', 'projectCategory_name',
+                   'projectCategory_description', 'projectTypeKey', 'isPrivate', 'archived', 'archivedBy_accountId',
+                   'archivedBy_displayName']
+FIELDS_R_PROJECTS = ['id', 'key', 'name', 'description', 'project_category_id', 'project_category_name',
+                     'project_category_description', 'project_type_key', 'is_private', 'archived',
+                     'archived_by_account_id', 'archived_by_display_name']
 PK_PROJECTS = ['id', 'key']
 JSON_PROJECTS = []
 
