@@ -99,14 +99,18 @@ class JiraComponent(KBCEnvHandler):
 
         elif isinstance(description, dict):
 
-            if description['type'] == 'inlineCard':
-                text += description.get('attrs').get('url', '')
+            if description['type'] == 'inlineCard' or description['type'] == 'blockCard':
+                text += description.get('attrs', {}).get('url', '')
             elif description['type'] == 'text':
-                text += description.get('text')
+                text += description.get('text', '')
             elif description['type'] == 'hardBreak':
                 text += '\n'
             elif description['type'] == 'mention':
-                text += description.get('attrs').get('text', '')
+                text += description.get('attrs', {}).get('text', '')
+            elif description['type'] == 'status':
+                text += description.get('attrs', {}).get('text', '')
+            elif description['type'] in ('codeBlock', 'media'):
+                pass
             else:
                 text += ''
 

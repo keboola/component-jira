@@ -8,3 +8,6 @@ __pycache__/
 
 # kbc datafolder
 data/
+
+# test notebook
+src/test.ipynb
