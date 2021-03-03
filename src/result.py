@@ -8,16 +8,16 @@ FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issue
                  'created', 'priority_id', 'priority_name', 'labels', 'timeestimate', 'aggregatetimeoriginalestimate',
                  'assignee_accountId', 'assignee_displayName', 'updated', 'status_id', 'status_name', 'components',
                  'timeoriginalestimate', 'security', 'aggregatetimeestimate', 'summary', 'description',
-                 'creator_accountId', 'creator_emailAddress', 'creator_displayName', 'subtasks', 'reporter_accountId',
-                 'reporter_displayName', 'aggregateprogress_progress', 'aggregateprogress_total', 'environment',
-                 'duedate', 'progress_progress', 'progress_total', 'custom_fields']
+                 'creator_accountId', 'creator_emailAddress', 'creator_displayName', 'parent_id', 'subtasks',
+                 'reporter_accountId', 'reporter_displayName', 'aggregateprogress_progress', 'aggregateprogress_total',
+                 'environment', 'duedate', 'progress_progress', 'progress_total', 'custom_fields']
 FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 'issue_type_name', 'time_spent',
                    'project_key', 'fix_versions', 'aggregate_time_spent', 'resolution', 'resolution_date', 'work_ratio',
                    'last_viewed', 'created', 'priority_id', 'priority_name', 'labels', 'time_estimate',
                    'aggregate_time_original_estimate', 'assignee_account_id', 'assignee_display_name', 'updated',
                    'status_id', 'status_name', 'components', 'time_original_estimate', 'security',
                    'aggregate_time_estimate', 'summary', 'description', 'creator_account_id', 'creator_email_address',
-                   'creator_display_name', 'subtasks', 'reporter_account_id', 'reporter_display_name',
+                   'creator_display_name', 'parent_id', 'subtasks', 'reporter_account_id', 'reporter_display_name',
                    'aggregate_progress', 'aggregate_progress_total', 'environment', 'due_date', 'progress',
                    'progress_total', 'custom_fields']
 PK_ISSUES = ['id']
