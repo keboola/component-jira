@@ -199,8 +199,8 @@ class JiraComponent(KBCEnvHandler):
                 _out['id'] = changelog['id']
                 _out['issue_id'] = changelog['issue_id']
                 _out['issue_key'] = changelog['issue_key']
-                _out['author_accountId'] = changelog['author']['accountId']
-                _out['author_emailAddress'] = changelog['author'].get('emailAddress', '')
+                _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
+                _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
                 _out['created'] = changelog['created']
 
                 for idx, item in enumerate(changelog['items'], start=1):
