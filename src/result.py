@@ -4,7 +4,8 @@ import json
 
 
 FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issuetype_name', 'timespent', 'project_key',
-                 'fixVersions', 'aggregatetimespent', 'resolution', 'resolutiondate', 'workratio', 'lastViewed',
+                 'fixVersions', 'aggregatetimespent', 'resolution', 'resolutiondate', 'resolution_id',
+                 'resolution_name', 'resolution_description', 'workratio', 'lastViewed',
                  'created', 'priority_id', 'priority_name', 'labels', 'timeestimate', 'aggregatetimeoriginalestimate',
                  'assignee_accountId', 'assignee_displayName', 'updated', 'status_id', 'status_name', 'components',
                  'timeoriginalestimate', 'security', 'aggregatetimeestimate', 'summary', 'description',
@@ -12,7 +13,8 @@ FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issue
                  'reporter_accountId', 'reporter_displayName', 'aggregateprogress_progress', 'aggregateprogress_total',
                  'environment', 'duedate', 'progress_progress', 'progress_total', 'custom_fields']
 FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 'issue_type_name', 'time_spent',
-                   'project_key', 'fix_versions', 'aggregate_time_spent', 'resolution', 'resolution_date', 'work_ratio',
+                   'project_key', 'fix_versions', 'aggregate_time_spent', 'resolution', 'resolution_date',
+                   'resolution_id', 'resolution_name', 'resolution_description', 'work_ratio',
                    'last_viewed', 'created', 'priority_id', 'priority_name', 'labels', 'time_estimate',
                    'aggregate_time_original_estimate', 'assignee_account_id', 'assignee_display_name', 'updated',
                    'status_id', 'status_name', 'components', 'time_original_estimate', 'security',
