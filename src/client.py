@@ -295,6 +295,9 @@ class JiraClient(HttpClientBase):
             elif rsp_sprints.status_code == 400 and \
                     'The board does not support sprints' in rsp_sprints.json()['errorMessages']:
                 break
+            elif rsp_sprints.status_code == 400 and \
+                    'Tabule nepodporuje sprinty' in rsp_sprints.json()['errorMessages']:
+                break
 
             else:
                 logging.exception(f"Could not download sprints for board {board_id}.")
