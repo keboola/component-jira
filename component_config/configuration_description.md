@@ -32,3 +32,10 @@ All parameters, except parameter for load type, are required.
     - **configuration name:** `incremental`
     - **description:** Specifies load type back to storage.
     - **default:** `1` - `Incremental Load`
+  
+### Functionality notes
+
+When fetching issues, take note that an update in the fixVersion does not update the "update" time of the issue. 
+Therefore, if an issue's version is released, and the issue is no longer in the specified Date Range the data will not be fetched.
+If fetching incrementally, this can lead to out of date data in the fixVersion field. 
+Make sure to have a date range set to a long enough period to fetch the issue data.
