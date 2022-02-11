@@ -32,6 +32,21 @@ All parameters, except parameter for load type, are required.
     - **configuration name:** `incremental`
     - **description:** Specifies load type back to storage.
     - **default:** `1` - `Incremental Load`
+- **Custom JQL**
+    - **type:** optional
+    - **configuration name:** `custom_jql`
+    - **description:** Runs custom JQL to get issues using a specified filter
+    - Child parameter : **Table name**
+      - **type:** required
+      - **configuration name:** `table_name`
+      - **description:** Name of table that stores the data returned by the filter
+    - Child parameter : **JQL**
+      - **type:** required
+      - **configuration name:** `jql`
+      - **description:** JQL filter to apply
+
+  
+
   
 ### Functionality notes
 
