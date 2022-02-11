@@ -6,13 +6,15 @@ from kbc.env_handler import KBCEnvHandler
 from client import JiraClient
 from result import JiraWriter
 
-
 KEY_USERNAME = 'username'
 KEY_TOKEN = '#token'
 KEY_ORGANIZATION = 'organization_id'
 KEY_SINCE = 'since'
 KEY_INCREMENTAL = 'incremental'
 KEY_DATASETS = 'datasets'
+KEY_CUSTOM_JQL = "custom_jql"
+KEY_JQL = "jql"
+KEY_TABLE_NAME = "table_name"
 
 MANDATORY_PARAMS = [KEY_USERNAME, KEY_TOKEN, KEY_ORGANIZATION, KEY_SINCE, KEY_DATASETS]
 
@@ -40,6 +42,7 @@ class JiraComponent(KBCEnvHandler):
         self.param_since_raw = self.cfg_params[KEY_SINCE]
         self.param_incremental = bool(self.cfg_params.get(KEY_INCREMENTAL, 1))
         self.param_datasets = self.cfg_params[KEY_DATASETS]
+        self.custom_jqls = self.cfg_params[KEY_CUSTOM_JQL]
 
         _parsed_date = dateparser.parse(self.param_since_raw)
 
@@ -218,7 +221,6 @@ class JiraComponent(KBCEnvHandler):
         sprint_writer = JiraWriter(self.tables_out_path, 'sprints', self.param_incremental)
         all_sprints = []
         for board in _boards:
-
             sprints = self.client.get_board_sprints(board)
             all_sprints += [s['id'] for s in sprints if
                             s.get('completeDate', self.param_since_date) >= self.param_since_date]
@@ -227,10 +229,35 @@ class JiraComponent(KBCEnvHandler):
 
         issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.param_incremental)
         for sprint in set(all_sprints):
-
             issues = self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
             issues = [{**i, **{'sprint_id': sprint}} for i in issues]
             issues_writer.writerows(issues)
+
+    def get_and_write_custom_jql(self, jql, table_name):
+        offset = 0
+        is_complete = False
+        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental, custom_name=table_name)
+
+        while is_complete is False:
+            issues, is_complete, offset = self.client.get_custom_jql(jql, offset=offset)
+            issues_f = []
+            for issue in issues:
+                _out = {
+                    'id': issue['id'],
+                    'key': issue['key']
+                }
+                _custom = {}
+                for key, value in issue['fields'].items():
+                    if 'customfield_' in key:
+                        _custom[key] = value
+                    elif key == 'description':
+                        _out['description'] = self.parse_description(issue['fields']['description']).strip('\n')
+                    else:
+                        _out[key] = value
+
+                _out['custom_fields'] = _custom
+                issues_f += [copy.deepcopy(_out)]
+            writer_issues.writerows(issues_f)
 
     def run(self):
 
@@ -257,3 +284,7 @@ class JiraComponent(KBCEnvHandler):
         if 'worklogs' in self.param_datasets:
             logging.info("Downloading worklogs.")
             self.get_and_write_worklogs()
+
+        for custom_jql in self.custom_jqls:
+            logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
+            self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))

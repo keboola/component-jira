@@ -20,9 +20,9 @@ class JiraClient(HttpClientBase):
 
         super().__init__(self.param_base_url, auth=(self.param_username, self.param_api_token), max_retries=5,
                          default_http_header={
-            'accept': 'application/json',
-            'content-type': 'application/json'
-        })
+                             'accept': 'application/json',
+                             'content-type': 'application/json'
+                         })
 
         _ = self.get_projects()
 
@@ -270,6 +270,35 @@ class JiraClient(HttpClientBase):
                 sys.exit(1)
 
         return all_boards
+
+    def get_custom_jql(self, jql, offset=0):
+        url_issues = urljoin(self.param_base_url, 'search')
+        is_complete = False
+
+        params_issues = {
+            'startAt': offset,
+            'jql': jql,
+            'maxResults': MAX_RESULTS,
+            'expand': 'changelog'
+        }
+
+        rsp_issues = self.get_raw(url=url_issues, params=params_issues)
+
+        if rsp_issues.status_code == 200:
+            issues = rsp_issues.json()['issues']
+
+            if len(issues) < MAX_RESULTS:
+                is_complete = True
+
+            else:
+                offset += MAX_RESULTS
+
+            return issues, is_complete, offset
+
+        else:
+            logging.exception("Could not download custom JQL.")
+            logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
+            sys.exit(1)
 
     def get_board_sprints(self, board_id):
 

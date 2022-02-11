@@ -76,6 +76,27 @@
       ],
       "propertyOrder": 400
     },
+    "custom_jql": {
+      "type": "array",
+      "format": "table",
+      "title": "Custom JQL",
+      "uniqueItems": true,
+      "propertyOrder": 500,
+      "items": {
+        "type": "object",
+        "title": "JQL",
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "title": "Table name"
+          },
+          "jql": {
+            "type": "string",
+            "title": "JQL"
+          }
+        }
+      }
+    },
     "incremental": {
       "type": "number",
       "title": "Load Type",
@@ -88,7 +109,8 @@
           "Incremental Load",
           "Full Load"
         ]
-      }
+      },
+      "propertyOrder": 600
     }
   }
 }

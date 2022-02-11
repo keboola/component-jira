@@ -87,16 +87,19 @@ JSON_SPRINTS_ISSUES = []
 
 class JiraWriter:
 
-    def __init__(self, tableOutPath, tableName, incremental):
+    def __init__(self, tableOutPath, tableName, incremental, custom_name=""):
 
-        self.paramPath = tableOutPath
-        self.paramTableName = tableName
-        self.paramTable = tableName + '.csv'
-        self.paramTablePath = os.path.join(self.paramPath, self.paramTable)
         self.paramFields = eval(f'FIELDS_{tableName.upper().replace("-", "_")}')
         self.paramJsonFields = eval(f'JSON_{tableName.upper().replace("-", "_")}')
         self.paramPrimaryKey = eval(f'PK_{tableName.upper().replace("-", "_")}')
         self.paramFieldsRenamed = eval(f'FIELDS_R_{tableName.upper().replace("-", "_")}')
+        self.paramPath = tableOutPath
+        self.paramTableName = tableName
+        self.paramTable = tableName + '.csv'
+        if custom_name:
+            self.paramTableName = custom_name
+            self.paramTable = custom_name + '.csv'
+        self.paramTablePath = os.path.join(self.paramPath, self.paramTable)
         self.paramIncremental = incremental
 
         self.createManifest()

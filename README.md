@@ -38,6 +38,10 @@ All parameters, except parameter for load type, are required.
     - **configuration name:** `incremental`
     - **description:** Specifies load type back to storage.
     - **default:** `1` - `Incremental Load`
+- **Custom JQL**
+    - **type:** optional
+    - **configuration name:** `custom_jql`
+    - **description:** Custom JQL to run to get issues. 
 
 ### Functionality notes
 
