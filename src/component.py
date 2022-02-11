@@ -287,10 +287,10 @@ class JiraComponent(KBCEnvHandler):
 
         for custom_jql in self.custom_jqls:
             if not custom_jql.get(KEY_JQL):
-                logging.exception("JQL is empty, must be filled in")
+                logging.exception("Custom JQL error: JQL is empty, must be filled in")
                 sys.exit(1)
             if not custom_jql.get(KEY_TABLE_NAME):
-                logging.exception("table name is empty, must be filled in")
+                logging.exception("Custom JQL error: table name is empty, must be filled in")
                 sys.exit(1)
             logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
             self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
