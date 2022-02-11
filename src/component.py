@@ -42,7 +42,7 @@ class JiraComponent(KBCEnvHandler):
         self.param_since_raw = self.cfg_params[KEY_SINCE]
         self.param_incremental = bool(self.cfg_params.get(KEY_INCREMENTAL, 1))
         self.param_datasets = self.cfg_params[KEY_DATASETS]
-        self.custom_jqls = self.cfg_params[KEY_CUSTOM_JQL]
+        self.custom_jqls = self.cfg_params.get(KEY_CUSTOM_JQL)
 
         _parsed_date = dateparser.parse(self.param_since_raw)
 
@@ -285,12 +285,13 @@ class JiraComponent(KBCEnvHandler):
             logging.info("Downloading worklogs.")
             self.get_and_write_worklogs()
 
-        for custom_jql in self.custom_jqls:
-            if not custom_jql.get(KEY_JQL):
-                logging.exception("Custom JQL error: JQL is empty, must be filled in")
-                sys.exit(1)
-            if not custom_jql.get(KEY_TABLE_NAME):
-                logging.exception("Custom JQL error: table name is empty, must be filled in")
-                sys.exit(1)
-            logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
-            self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+        if self.custom_jqls:
+            for custom_jql in self.custom_jqls:
+                if not custom_jql.get(KEY_JQL):
+                    logging.exception("Custom JQL error: JQL is empty, must be filled in")
+                    sys.exit(1)
+                if not custom_jql.get(KEY_TABLE_NAME):
+                    logging.exception("Custom JQL error: table name is empty, must be filled in")
+                    sys.exit(1)
+                logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
+                self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
