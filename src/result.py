@@ -11,7 +11,7 @@ FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issue
                  'timeoriginalestimate', 'security', 'aggregatetimeestimate', 'summary', 'description',
                  'creator_accountId', 'creator_emailAddress', 'creator_displayName', 'parent_id', 'subtasks',
                  'reporter_accountId', 'reporter_displayName', 'aggregateprogress_progress', 'aggregateprogress_total',
-                 'environment', 'duedate', 'progress_progress', 'progress_total', 'custom_fields']
+                 'environment', 'duedate', 'progress_progress', 'progress_total', 'custom_fields', 'issuelinks']
 FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 'issue_type_name', 'time_spent',
                    'project_key', 'fix_versions', 'aggregate_time_spent', 'resolution', 'resolution_date',
                    'resolution_id', 'resolution_name', 'resolution_description', 'work_ratio',
