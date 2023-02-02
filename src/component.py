@@ -1,8 +1,10 @@
 import copy
-import dateparser
 import logging
 import sys
-from kbc.env_handler import KBCEnvHandler
+
+import dateparser
+from keboola.component import ComponentBase, UserException
+
 from client import JiraClient
 from result import JiraWriter
 
@@ -19,30 +21,26 @@ KEY_TABLE_NAME = "table_name"
 MANDATORY_PARAMS = [KEY_USERNAME, KEY_TOKEN, KEY_ORGANIZATION, KEY_SINCE, KEY_DATASETS]
 
 
-class JiraComponent(KBCEnvHandler):
+class JiraComponent(ComponentBase):
 
     def __init__(self):
 
-        super().__init__(mandatory_params=MANDATORY_PARAMS, log_level='INFO')
-
-        if self.cfg_params.get('debug', False) is True:
-            logger = logging.getLogger()
-            logger.setLevel(level='DEBUG')
+        super().__init__()
 
         try:
-            self.validate_config(mandatory_params=MANDATORY_PARAMS)
+            self.validate_configuration_parameters(mandatory_params=MANDATORY_PARAMS)
 
         except ValueError as e:
             logging.exception(e)
             sys.exit(1)
 
-        self.param_username = self.cfg_params[KEY_USERNAME]
-        self.param_token = self.cfg_params[KEY_TOKEN]
-        self.param_organization = self.cfg_params[KEY_ORGANIZATION]
-        self.param_since_raw = self.cfg_params[KEY_SINCE]
-        self.param_incremental = bool(self.cfg_params.get(KEY_INCREMENTAL, 1))
-        self.param_datasets = self.cfg_params[KEY_DATASETS]
-        self.custom_jqls = self.cfg_params.get(KEY_CUSTOM_JQL)
+        self.param_username = self.configuration.parameters[KEY_USERNAME]
+        self.param_token = self.configuration.parameters[KEY_TOKEN]
+        self.param_organization = self.configuration.parameters[KEY_ORGANIZATION]
+        self.param_since_raw = self.configuration.parameters[KEY_SINCE]
+        self.param_incremental = bool(self.configuration.parameters.get(KEY_INCREMENTAL, 1))
+        self.param_datasets = self.configuration.parameters[KEY_DATASETS]
+        self.custom_jqls = self.configuration.parameters.get(KEY_CUSTOM_JQL)
 
         _parsed_date = dateparser.parse(self.param_since_raw)
 
@@ -295,3 +293,15 @@ class JiraComponent(KBCEnvHandler):
                     sys.exit(1)
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
                 self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+
+
+if __name__ == "__main__":
+    try:
+        comp = JiraComponent()
+        comp.execute_action()
+    except UserException as exc:
+        logging.exception(exc)
+        exit(1)
+    except Exception as exc:
+        logging.exception(exc)
+        exit(2)
