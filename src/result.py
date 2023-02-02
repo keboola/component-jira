@@ -1,7 +1,6 @@
-import os
 import csv
 import json
-
+import os
 
 FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issuetype_name', 'timespent', 'project_key',
                  'fixVersions', 'aggregatetimespent', 'resolution', 'resolutiondate', 'resolution_id',
@@ -21,9 +20,9 @@ FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 
                    'aggregate_time_estimate', 'summary', 'description', 'creator_account_id', 'creator_email_address',
                    'creator_display_name', 'parent_id', 'subtasks', 'reporter_account_id', 'reporter_display_name',
                    'aggregate_progress', 'aggregate_progress_total', 'environment', 'due_date', 'progress',
-                   'progress_total', 'custom_fields']
+                   'progress_total', 'custom_fields', 'issuelinks']
 PK_ISSUES = ['id']
-JSON_ISSUES = ['fixVersions', 'components', 'subtasks', 'custom_fields']
+JSON_ISSUES = ['fixVersions', 'components', 'subtasks', 'custom_fields', 'issuelinks']
 
 FIELDS_USERS = ['accountId', 'displayName', 'active', 'accountType', 'emailAddress', 'locale']
 FIELDS_R_USERS = ['account_id', 'display_name', 'active', 'account_type', 'email_address', 'locale']
@@ -116,7 +115,6 @@ class JiraWriter:
         path = self.paramTablePath + '.manifest'
 
         with open(path, 'w') as manifest:
-
             json.dump(template, manifest)
 
     def createWriter(self):

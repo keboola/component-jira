@@ -1,6 +1,7 @@
 import logging
 import sys
 from urllib.parse import urljoin
+
 from kbc.client_base import HttpClientBase
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
