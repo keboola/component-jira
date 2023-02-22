@@ -118,7 +118,6 @@ class JiraComponent(ComponentBase):
         comments = self.client.get_comments(issue_ids=issue_ids)
         print(comments)
 
-
     def get_and_write_projects(self):
 
         projects = self.client.get_projects()
