@@ -102,10 +102,10 @@ class JiraComponent(ComponentBase):
     def get_and_write_comments(self):
 
         if 'issues_changelogs' in self.param_datasets:
-            load_table_name = os.path.join(self.tables_out_path, 'issues-changelogs')
+            load_table_name = os.path.join(self.tables_out_path, 'issues-changelogs.csv')
             load_table_cols = FIELDS_R_ISSUES
         else:
-            load_table_name = os.path.join(self.tables_out_path, 'issues')
+            load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
             load_table_cols = FIELDS_R_ISSUES_CHANGELOGS
 
         issue_ids = set()
