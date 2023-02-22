@@ -103,10 +103,10 @@ class JiraComponent(ComponentBase):
 
         if 'issues_changelogs' in self.param_datasets:
             load_table_name = os.path.join(self.tables_out_path, 'issues-changelogs.csv')
-            load_table_cols = FIELDS_R_ISSUES
+            load_table_cols = FIELDS_R_ISSUES_CHANGELOGS
         else:
             load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
-            load_table_cols = FIELDS_R_ISSUES_CHANGELOGS
+            load_table_cols = FIELDS_R_ISSUES
 
         issue_ids = set()
 
