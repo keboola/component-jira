@@ -10,6 +10,10 @@ MAX_RESULTS = 100
 MAX_RESULTS_AGILE = 50
 
 
+class JiraClientException(Exception):
+    pass
+
+
 class JiraClient(HttpClientBase):
 
     def __init__(self, organization_id, username, api_token):
@@ -50,27 +54,23 @@ class JiraClient(HttpClientBase):
         all_comments = []
         for issue_id in issue_ids:
             url_comments = urljoin(self.base_url, f'issue/{issue_id}/comment')
-            offset = 0
-            is_complete = False
 
-            while is_complete is False:
-                params_changelogs = {
-                    'startAt': offset,
-                    'maxResults': MAX_RESULTS
-                }
+            params_changelogs = {
+                'maxResults': MAX_RESULTS
+            }
 
-                r = self.get_raw(url=url_comments, params=params_changelogs)
-                sc, js = r.status_code, r.json()
+            r = self.get_raw(url=url_comments, params=params_changelogs)
+            sc, js = r.status_code, r.json()
 
-                if sc == 200:
-                    all_comments.append(js['comments'])
-                    offset += MAX_RESULTS
-                    is_complete = js['isLast']
+            if sc == 200:
+                all_comments.append(js['comments'])
+                if js.get('total') > MAX_RESULTS:
+                    raise JiraClientException("Total number of comments is higher than MAX_RESULTS.")
 
-                else:
-                    logging.error(f"Could not download changelogs for issue {issue_id}.")
-                    logging.error(f"Received: {sc} - {js}.")
-                    sys.exit(1)
+            else:
+                logging.error(f"Could not download changelogs for issue {issue_id}.")
+                logging.error(f"Received: {sc} - {js}.")
+                sys.exit(1)
 
         return all_comments
 
