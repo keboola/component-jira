@@ -55,17 +55,11 @@ class JiraClient(HttpClientBase):
         for issue_id in issue_ids:
             url_comments = urljoin(self.base_url, f'issue/{issue_id}/comment')
 
-            params_changelogs = {
-                'maxResults': MAX_RESULTS
-            }
-
-            r = self.get_raw(url=url_comments, params=params_changelogs)
+            r = self.get_raw(url=url_comments)
             sc, js = r.status_code, r.json()
 
             if sc == 200:
                 all_comments.append(js['comments'])
-                if js.get('total') > MAX_RESULTS:
-                    raise JiraClientException("Total number of comments is higher than MAX_RESULTS.")
 
             else:
                 logging.error(f"Could not download changelogs for issue {issue_id}.")
