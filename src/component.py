@@ -117,8 +117,9 @@ class JiraComponent(ComponentBase):
 
         comments = self.client.get_comments(issue_ids=issue_ids)
         for comment in comments:
-            print(comment)
-            exit()
+            if len(comment) > 0:
+                print(comment)
+                sys.exit()
 
     def get_and_write_projects(self):
 
