@@ -46,6 +46,33 @@ class JiraClient(HttpClientBase):
             logging.exception(f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
             sys.exit(1)
 
+    def get_comments(self, issue_key):
+        url_comments = urljoin(self.base_url, f'issue/{issue_key}/comment')
+        offset = 0
+        all_comments = []
+        is_complete = False
+
+        while is_complete is False:
+            params_changelogs = {
+                'startAt': offset,
+                'maxResults': MAX_RESULTS
+            }
+
+            r = self.get_raw(url=url_comments, params=params_changelogs)
+            sc, js = r.status_code, r.json()
+
+            if sc == 200:
+                all_comments += js['values']
+                offset += MAX_RESULTS
+                is_complete = js['isLast']
+
+            else:
+                logging.error(f"Could not download changelogs for issue {issue_key}.")
+                logging.error(f"Received: {sc} - {js}.")
+                sys.exit(1)
+
+        return all_comments
+
     def get_changelogs(self, issue_key):
 
         url_changelogs = urljoin(self.base_url, f'issue/{issue_key}/changelog')

@@ -1,12 +1,13 @@
 import copy
 import logging
 import sys
+import csv
 
 import dateparser
 from keboola.component import ComponentBase, UserException
 
 from client import JiraClient
-from result import JiraWriter
+from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_R_ISSUES_CHANGELOGS
 
 KEY_USERNAME = 'username'
 KEY_TOKEN = '#token'
@@ -55,6 +56,65 @@ class JiraComponent(ComponentBase):
         self.client = JiraClient(organization_id=self.param_organization,
                                  username=self.param_username,
                                  api_token=self.param_token)
+
+    def run(self):
+
+        logging.info("Downloading projects.")
+        self.get_and_write_projects()
+
+        logging.info("Downloading a list of fields.")
+        self.get_and_write_fields()
+
+        logging.info("Downloading users.")
+        self.get_and_write_users()
+
+        if 'issues' not in self.param_datasets and 'issues_changelogs' in self.param_datasets:
+            logging.warning("Issues need to be enabled in order to download issues changelogs.")
+
+        if 'issues' in self.param_datasets:
+            logging.info("Downloading issues.")
+            self.get_and_write_issues()
+
+            if 'comments' in self.param_datasets:
+                logging.info("Downloading comments")
+                self.get_and_write_comments()
+
+        if 'boards_n_sprints' in self.param_datasets:
+            logging.info("Downloading boards and sprints.")
+            self.get_and_write_boards_and_sprints()
+
+        if 'worklogs' in self.param_datasets:
+            logging.info("Downloading worklogs.")
+            self.get_and_write_worklogs()
+
+        if self.custom_jqls:
+            for custom_jql in self.custom_jqls:
+                if not custom_jql.get(KEY_JQL):
+                    logging.exception("Custom JQL error: JQL is empty, must be filled in")
+                    sys.exit(1)
+                if not custom_jql.get(KEY_TABLE_NAME):
+                    logging.exception("Custom JQL error: table name is empty, must be filled in")
+                    sys.exit(1)
+                logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
+                self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+
+    def get_and_write_comments(self):
+
+        if 'issues_changelogs' in self.param_datasets:
+            load_table_name = 'issues-changelogs'
+            load_table_cols = FIELDS_R_ISSUES
+        else:
+            load_table_name = 'issues'
+            load_table_cols = FIELDS_R_ISSUES_CHANGELOGS
+
+        issue_ids = set()
+
+        with open(load_table_name, 'r') as file:
+            r = csv.DictReader(file, fieldnames=load_table_cols)
+            for row in r:
+                issue_ids.add(row['issue_id'])
+
+        print(issue_ids)
 
     def get_and_write_projects(self):
 
@@ -256,43 +316,6 @@ class JiraComponent(ComponentBase):
                 _out['custom_fields'] = _custom
                 issues_f += [copy.deepcopy(_out)]
             writer_issues.writerows(issues_f)
-
-    def run(self):
-
-        logging.info("Downloading projects.")
-        self.get_and_write_projects()
-
-        logging.info("Downloading a list of fields.")
-        self.get_and_write_fields()
-
-        logging.info("Downloading users.")
-        self.get_and_write_users()
-
-        if 'issues' not in self.param_datasets and 'issues_changelogs' in self.param_datasets:
-            logging.warning("Issues need to be enabled in order to download issues changelogs.")
-
-        if 'issues' in self.param_datasets:
-            logging.info("Downloading issues.")
-            self.get_and_write_issues()
-
-        if 'boards_n_sprints' in self.param_datasets:
-            logging.info("Downloading boards and sprints.")
-            self.get_and_write_boards_and_sprints()
-
-        if 'worklogs' in self.param_datasets:
-            logging.info("Downloading worklogs.")
-            self.get_and_write_worklogs()
-
-        if self.custom_jqls:
-            for custom_jql in self.custom_jqls:
-                if not custom_jql.get(KEY_JQL):
-                    logging.exception("Custom JQL error: JQL is empty, must be filled in")
-                    sys.exit(1)
-                if not custom_jql.get(KEY_TABLE_NAME):
-                    logging.exception("Custom JQL error: table name is empty, must be filled in")
-                    sys.exit(1)
-                logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
-                self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
 
 
 if __name__ == "__main__":
