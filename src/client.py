@@ -63,6 +63,7 @@ class JiraClient(HttpClientBase):
                 sc, js = r.status_code, r.json()
 
                 if sc == 200:
+                    print(js)
                     all_comments += js['values']
                     offset += MAX_RESULTS
                     is_complete = js['isLast']
