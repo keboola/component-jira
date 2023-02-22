@@ -116,10 +116,34 @@ class JiraComponent(ComponentBase):
                 issue_ids.add(row['issue_id'])
 
         comments = self.client.get_comments(issue_ids=issue_ids)
-        for comment in comments:
-            if len(comment) > 0:
-                print(comment)
-                sys.exit()
+        d = dict()
+        for issue_comments in comments:
+            for comment in issue_comments:
+
+                body_content = comment["body"]["content"]
+                text_list = []
+                for paragraph in body_content:
+                    if paragraph["type"] == "paragraph":
+                        for text_dict in paragraph["content"]:
+                            if text_dict["type"] == "text":
+                                text_list.append(text_dict["text"])
+                body_text = "".join(text_list)
+
+                d[comment["id"]] = {
+                    "account_id": comment["author"]["accountId"],
+                    "email_address": comment["author"]["emailAddress"],
+                    "display_name": comment["author"]["displayName"],
+                    "active": comment["author"]["active"],
+                    "account_type": comment["author"]["accountType"],
+                    "text": body_text,
+                    "update_author_account_id": comment["updateAuthor"]["AccountId"],
+                    "update_author_display_name": comment["updateAuthor"]["displayName"],
+                    "update_author_active": comment["updateAuthor"]["active"],
+                    "update_author_account_type": comment["updateAuthor"]["accountType"],
+                    "created": comment["created"],
+                    "updated": comment["updated"]
+                }
+        print(d)
 
     def get_and_write_projects(self):
 
