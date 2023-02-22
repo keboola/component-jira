@@ -59,14 +59,16 @@
             "Issues",
             "Issues Changelogs",
             "Worklogs",
-            "Boards & Sprints"
+            "Boards & Sprints",
+            "Issues Comments"
           ]
         },
         "enum": [
           "issues",
           "issues_changelogs",
           "worklogs",
-          "boards_n_sprints"
+          "boards_n_sprints",
+          "comments"
         ],
         "type": "string"
       },

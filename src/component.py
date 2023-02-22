@@ -8,7 +8,7 @@ import dateparser
 from keboola.component import ComponentBase, UserException
 
 from client import JiraClient
-from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_R_ISSUES_CHANGELOGS
+from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_R_ISSUES_CHANGELOGS, FIELDS_COMMENTS
 
 KEY_USERNAME = 'username'
 KEY_TOKEN = '#token'
@@ -99,6 +99,19 @@ class JiraComponent(ComponentBase):
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
                 self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
 
+    @staticmethod
+    def merge_text_and_mentions(data):
+        content_list = data["body"]["content"]
+        merged_string = ""
+        for content in content_list:
+            if content["type"] == "paragraph":
+                for c in content["content"]:
+                    if c["type"] == "text":
+                        merged_string += c["text"]
+                    elif c["type"] == "mention":
+                        merged_string += c["attrs"]["text"]
+        return merged_string
+
     def get_and_write_comments(self):
 
         if 'issues_changelogs' in self.param_datasets:
@@ -116,38 +129,36 @@ class JiraComponent(ComponentBase):
                 issue_ids.add(row['issue_id'])
 
         comments = self.client.get_comments(issue_ids=issue_ids)
-        d = dict()
+        comment_list = []
         for issue_comments in comments:
             for comment in issue_comments:
+                body_text = self.merge_text_and_mentions(comment)
 
-                body_content = comment["body"]["content"]
-                text_list = []
-                for paragraph in body_content:
-                    if paragraph["type"] == "paragraph":
-                        for text_dict in paragraph["content"]:
-                            if text_dict["type"] == "text":
-                                text_list.append(text_dict["text"])
-                body_text = "".join(text_list)
+                update_author = comment.get("updateAuthor", {})
+                comment_dict = {
+                    "id": comment["id"],
+                    "account_id": comment["author"].get("accountId"),
+                    "email_address": comment["author"].get("emailAddress"),
+                    "display_name": comment["author"].get("displayName"),
+                    "active": comment["author"].get("active"),
+                    "account_type": comment["author"].get("accountType"),
+                    "text": body_text,
+                    "update_author_account_id": update_author.get("accountId"),
+                    "update_author_display_name": update_author.get("displayName"),
+                    "update_author_active": update_author.get("active"),
+                    "update_author_email_address": update_author.get("emailAddress"),
+                    "update_author_account_type": update_author.get("accountType"),
+                    "created": comment["created"],
+                    "updated": comment["updated"]
+                }
+                comment_list.append(comment_dict)
 
-                try:
-                    d[comment["id"]] = {
-                        "account_id": comment["author"]["accountId"],
-                        "email_address": comment["author"]["emailAddress"],
-                        "display_name": comment["author"]["displayName"],
-                        "active": comment["author"]["active"],
-                        "account_type": comment["author"]["accountType"],
-                        "text": body_text,
-                        "update_author_account_id": comment["updateAuthor"]["AccountId"],
-                        "update_author_display_name": comment["updateAuthor"]["displayName"],
-                        "update_author_active": comment["updateAuthor"]["active"],
-                        "update_author_email_address": comment["updateAuthor"]["emailAddress"],
-                        "update_author_account_type": comment["updateAuthor"]["accountType"],
-                        "created": comment["created"],
-                        "updated": comment["updated"]
-                    }
-                except KeyError:
-                    logging.error(comment)
-        print(d)
+        # this is here only to create manifest file
+        JiraWriter(self.tables_out_path, 'comments', self.param_incremental)
+
+        with open(os.path.join(self.tables_out_path, 'comments.csv'), mode="w", newline="") as output_file:
+            writer = csv.DictWriter(output_file, fieldnames=FIELDS_COMMENTS, extrasaction="ignore")
+            writer.writerows(comment_list)
 
     def get_and_write_projects(self):
 
