@@ -116,7 +116,8 @@ class JiraComponent(ComponentBase):
                 issue_ids.add(row['issue_id'])
 
         comments = self.client.get_comments(issue_ids=issue_ids)
-        print(comments)
+        for comment in comments:
+            print(comment)
 
     def get_and_write_projects(self):
 
