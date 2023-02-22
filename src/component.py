@@ -129,20 +129,24 @@ class JiraComponent(ComponentBase):
                                 text_list.append(text_dict["text"])
                 body_text = "".join(text_list)
 
-                d[comment["id"]] = {
-                    "account_id": comment["author"]["accountId"],
-                    "email_address": comment["author"]["emailAddress"],
-                    "display_name": comment["author"]["displayName"],
-                    "active": comment["author"]["active"],
-                    "account_type": comment["author"]["accountType"],
-                    "text": body_text,
-                    "update_author_account_id": comment["updateAuthor"]["AccountId"],
-                    "update_author_display_name": comment["updateAuthor"]["displayName"],
-                    "update_author_active": comment["updateAuthor"]["active"],
-                    "update_author_account_type": comment["updateAuthor"]["accountType"],
-                    "created": comment["created"],
-                    "updated": comment["updated"]
-                }
+                try:
+                    d[comment["id"]] = {
+                        "account_id": comment["author"]["accountId"],
+                        "email_address": comment["author"]["emailAddress"],
+                        "display_name": comment["author"]["displayName"],
+                        "active": comment["author"]["active"],
+                        "account_type": comment["author"]["accountType"],
+                        "text": body_text,
+                        "update_author_account_id": comment["updateAuthor"]["AccountId"],
+                        "update_author_display_name": comment["updateAuthor"]["displayName"],
+                        "update_author_active": comment["updateAuthor"]["active"],
+                        "update_author_email_address": comment["updateAuthor"]["emailAddress"],
+                        "update_author_account_type": comment["updateAuthor"]["accountType"],
+                        "created": comment["created"],
+                        "updated": comment["updated"]
+                    }
+                except KeyError:
+                    logging.error(comment)
         print(d)
 
     def get_and_write_projects(self):
