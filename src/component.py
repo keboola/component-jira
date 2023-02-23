@@ -69,8 +69,7 @@ class JiraComponent(ComponentBase):
         logging.info("Downloading users.")
         self.get_and_write_users()
 
-        if 'issues' not in self.param_datasets and 'issues_changelogs' in self.param_datasets:
-            logging.warning("Issues need to be enabled in order to download issues changelogs.")
+        self.check_issues_param()
 
         if 'issues' in self.param_datasets:
             logging.info("Downloading issues.")
@@ -98,6 +97,13 @@ class JiraComponent(ComponentBase):
                     sys.exit(1)
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
                 self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+
+    def check_issues_param(self):
+        if 'issues' not in self.param_datasets:
+            if 'issues_changelogs' in self.param_datasets:
+                logging.warning("Issues need to be enabled in order to download issues changelogs.")
+            if 'comments' in self.param_datasets:
+                logging.warning("Issues need to be enabled in order to download issues comments.")
 
     @staticmethod
     def merge_text_and_mentions(data):

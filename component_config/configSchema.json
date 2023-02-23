@@ -52,6 +52,7 @@
       "type": "array",
       "format": "select",
       "title": "Datasets",
+      "description": "To fetch Issues Changelogs and Issues Comments, the Issues is also required.",
       "uniqueItems": true,
       "items": {
         "options": {
