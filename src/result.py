@@ -83,13 +83,13 @@ FIELDS_R_SPRINTS_ISSUES = ['issue_id', 'sprint_id', 'issue_key']
 PK_SPRINTS_ISSUES = ['issue_id', 'sprint_id']
 JSON_SPRINTS_ISSUES = []
 
-FIELDS_COMMENTS = ["id", "account_id", "email_address", "display_name", "active", "account_type", "text",
-                   "update_author_account_id", "update_author_display_name", "update_author_active",
+FIELDS_COMMENTS = ["comment_id", "issue_id", "account_id", "email_address", "display_name", "active", "account_type",
+                   "text", "update_author_account_id", "update_author_display_name", "update_author_active",
                    "update_author_email_address", "update_author_account_type", "created", "updated"]
-FIELDS_R_COMMENTS = ["id", "account_id", "email_address", "display_name", "active", "account_type", "text",
-                     "update_author_account_id", "update_author_display_name", "update_author_active",
+FIELDS_R_COMMENTS = ["comment_id", "issue_id", "account_id", "email_address", "display_name", "active", "account_type",
+                     "text", "update_author_account_id", "update_author_display_name", "update_author_active",
                      "update_author_email_address", "update_author_account_type", "created", "updated"]
-PK_COMMENTS = ["id"]
+PK_COMMENTS = ["comment_id"]
 JSON_COMMENTS = []
 
 

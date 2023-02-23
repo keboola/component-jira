@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import csv
+import re
 
 import dateparser
 from keboola.component import ComponentBase, UserException
@@ -118,6 +119,17 @@ class JiraComponent(ComponentBase):
                         merged_string += c["attrs"]["text"]
         return merged_string
 
+    @staticmethod
+    def get_issue_id_from_url(url):
+        pattern = r"/issue/(\d+)"
+        match = re.search(pattern, url)
+        if match:
+            issue_id = match.group(1)
+            return issue_id
+        else:
+            logging.error("Cannot find issue_id in response during fetching comments.")
+            sys.exit(1)
+
     def get_and_write_comments(self):
 
         if 'issues_changelogs' in self.param_datasets:
@@ -139,10 +151,10 @@ class JiraComponent(ComponentBase):
         for issue_comments in comments:
             for comment in issue_comments:
                 body_text = self.merge_text_and_mentions(comment)
-
                 update_author = comment.get("updateAuthor", {})
                 comment_dict = {
-                    "id": comment["id"],
+                    "comment_id": comment["id"],
+                    "issue_id": self.get_issue_id_from_url(comment["self"]),
                     "account_id": comment["author"].get("accountId"),
                     "email_address": comment["author"].get("emailAddress"),
                     "display_name": comment["author"].get("displayName"),
