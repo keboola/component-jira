@@ -10,10 +10,6 @@ MAX_RESULTS = 100
 MAX_RESULTS_AGILE = 50
 
 
-class JiraClientException(Exception):
-    pass
-
-
 class JiraClient(HttpClientBase):
 
     def __init__(self, organization_id, username, api_token):
