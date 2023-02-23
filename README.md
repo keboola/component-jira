@@ -32,7 +32,7 @@ All parameters, except parameter for load type, are required.
     - **configuration name:** `datasets`
     - **note:** If you'd like to download `issues_changelogs` dataset, **`issues` must be selected as well.**
     - **description:** An array of objects, which will be downloaded.
-    - **possible values:** `issues`, `issues_changelogs`, `worklogs`, `boards_n_sprints`
+    - **possible values:** `issues`, `issues_changelogs`, `worklogs`, `boards_n_sprints`, `comments`
 - **Load Type**
     - **type:** optional
     - **configuration name:** `incremental`
