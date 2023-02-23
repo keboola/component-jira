@@ -156,6 +156,8 @@ class JiraComponent(ComponentBase):
         # this is here only to create manifest file
         JiraWriter(self.tables_out_path, 'comments', self.param_incremental)
 
+        # This is the only table that is being saved in component.py, other tables use JiraWriter. The reason is
+        # that I wanted to save both mentions and comments in a single field as sting and this was the easiest way.
         with open(os.path.join(self.tables_out_path, 'comments.csv'), mode="w", newline="") as output_file:
             writer = csv.DictWriter(output_file, fieldnames=FIELDS_COMMENTS, extrasaction="ignore")
             writer.writerows(comment_list)
