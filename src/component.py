@@ -141,11 +141,16 @@ class JiraComponent(ComponentBase):
 
         issue_ids = set()
 
+        # TODO: Good call to do it like this! Consider wrapping this in separate method and "yield from r" so it's not
+        # too nested and more readable (when working in bellow comment)
         with open(load_table_name, 'r') as file:
             r = csv.DictReader(file, fieldnames=load_table_cols)
             for row in r:
+                # TODO: The key should be 'id', this one doesnt exist
                 issue_ids.add(row['issue_id'])
-
+        # TODO: This is quite memory demanding. When backfilling large amount of issues this can easily end with MoM
+        # Please iterate through issues in chunks or 1by1 and directly write the result to the output file
+        # BTW I can imagine this will take quite some time. This is future candidate for AsyncIo / Threading
         comments = self.client.get_comments(issue_ids=issue_ids)
         comment_list = []
         for issue_comments in comments:
