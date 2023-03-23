@@ -9,7 +9,7 @@ import dateparser
 from keboola.component import ComponentBase, UserException
 
 from client import JiraClient
-from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS
+from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
 
 KEY_USERNAME = 'username'
 KEY_TOKEN = '#token'
@@ -137,11 +137,12 @@ class JiraComponent(ComponentBase):
             for row in r:
                 yield row[issue_id_col_name]
 
-    def parse_comments(self, comments) -> dict:
+    def parse_comments(self, comments) -> list:
+        result = []
         for comment in comments:
             body_text = self.merge_text_and_mentions(comment)
             update_author = comment.get("updateAuthor", {})
-            comment_dict = {
+            result.append({
                 "comment_id": comment["id"],
                 "issue_id": self.get_issue_id_from_url(comment["self"]),
                 "account_id": comment["author"].get("accountId"),
@@ -157,29 +158,31 @@ class JiraComponent(ComponentBase):
                 "update_author_account_type": update_author.get("accountType"),
                 "created": comment["created"],
                 "updated": comment["updated"]
-            }
-            return comment_dict
+            })
+            return result
 
     def get_and_write_comments(self):
 
         load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
         issue_id_col_name = 'id'
 
-        # TODO: This is quite memory demanding. When backfilling large amount of issues this can easily end with MoM
-        # Please iterate through issues in chunks or 1by1 and directly write the result to the output file
-        # BTW I can imagine this will take quite some time. This is future candidate for AsyncIo / Threading
+        issue_ids = set()
+        for issue_id in self.get_issue_ids(load_table_name, FIELDS_R_ISSUES, issue_id_col_name):
+            issue_ids.add(issue_id)
 
         # This is the only table that is being saved in component.py, other tables use JiraWriter. The reason is
         # that I wanted to save both mentions and comments in a single field as sting and this was the easiest way.
         with open(os.path.join(self.tables_out_path, 'comments.csv'), mode="w", newline="") as output_file:
             writer = csv.DictWriter(output_file, fieldnames=FIELDS_COMMENTS, extrasaction="ignore")
-            for issue_id in self.get_issue_ids(load_table_name, FIELDS_R_ISSUES, issue_id_col_name):
-                comments = self.client.get_comment(issue_id=issue_id)
-                if comments:
-                    writer.writerow(self.parse_comments(comments))
+            for issue_id in issue_ids:
+                issue_comments = self.client.get_comments(issue_id=issue_id)
+                if issue_comments:
+                    comments = self.parse_comments(issue_comments)
+                    writer.writerows(comments)
 
-        # this is here only to create manifest file
-        JiraWriter(self.tables_out_path, 'comments', self.param_incremental)
+        table = self.create_out_table_definition(name="comments", columns=FIELDS_COMMENTS, primary_key=PK_COMMENTS,
+                                                 incremental=self.param_incremental)
+        self.write_manifest(table)
 
     def get_and_write_projects(self):
 
