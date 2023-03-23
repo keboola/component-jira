@@ -130,60 +130,56 @@ class JiraComponent(ComponentBase):
             logging.error("Cannot find issue_id in response during fetching comments.")
             sys.exit(1)
 
+    @staticmethod
+    def get_issue_ids(table_name, table_cols, issue_id_col_name):
+        with open(table_name, 'r') as file:
+            r = csv.DictReader(file, fieldnames=table_cols)
+            for row in r:
+                yield row[issue_id_col_name]
+
+    def parse_comments(self, comments) -> dict:
+        for comment in comments:
+            body_text = self.merge_text_and_mentions(comment)
+            update_author = comment.get("updateAuthor", {})
+            comment_dict = {
+                "comment_id": comment["id"],
+                "issue_id": self.get_issue_id_from_url(comment["self"]),
+                "account_id": comment["author"].get("accountId"),
+                "email_address": comment["author"].get("emailAddress"),
+                "display_name": comment["author"].get("displayName"),
+                "active": comment["author"].get("active"),
+                "account_type": comment["author"].get("accountType"),
+                "text": body_text,
+                "update_author_account_id": update_author.get("accountId"),
+                "update_author_display_name": update_author.get("displayName"),
+                "update_author_active": update_author.get("active"),
+                "update_author_email_address": update_author.get("emailAddress"),
+                "update_author_account_type": update_author.get("accountType"),
+                "created": comment["created"],
+                "updated": comment["updated"]
+            }
+            return comment_dict
+
     def get_and_write_comments(self):
 
-        if 'issues_changelogs' in self.param_datasets:
-            load_table_name = os.path.join(self.tables_out_path, 'issues-changelogs.csv')
-            load_table_cols = FIELDS_R_ISSUES_CHANGELOGS
-        else:
-            load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
-            load_table_cols = FIELDS_R_ISSUES
+        load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
+        issue_id_col_name = 'id'
 
-        issue_ids = set()
-
-        # TODO: Good call to do it like this! Consider wrapping this in separate method and "yield from r" so it's not
-        # too nested and more readable (when working in bellow comment)
-        with open(load_table_name, 'r') as file:
-            r = csv.DictReader(file, fieldnames=load_table_cols)
-            for row in r:
-                # TODO: The key should be 'id', this one doesnt exist
-                issue_ids.add(row['issue_id'])
         # TODO: This is quite memory demanding. When backfilling large amount of issues this can easily end with MoM
         # Please iterate through issues in chunks or 1by1 and directly write the result to the output file
         # BTW I can imagine this will take quite some time. This is future candidate for AsyncIo / Threading
-        comments = self.client.get_comments(issue_ids=issue_ids)
-        comment_list = []
-        for issue_comments in comments:
-            for comment in issue_comments:
-                body_text = self.merge_text_and_mentions(comment)
-                update_author = comment.get("updateAuthor", {})
-                comment_dict = {
-                    "comment_id": comment["id"],
-                    "issue_id": self.get_issue_id_from_url(comment["self"]),
-                    "account_id": comment["author"].get("accountId"),
-                    "email_address": comment["author"].get("emailAddress"),
-                    "display_name": comment["author"].get("displayName"),
-                    "active": comment["author"].get("active"),
-                    "account_type": comment["author"].get("accountType"),
-                    "text": body_text,
-                    "update_author_account_id": update_author.get("accountId"),
-                    "update_author_display_name": update_author.get("displayName"),
-                    "update_author_active": update_author.get("active"),
-                    "update_author_email_address": update_author.get("emailAddress"),
-                    "update_author_account_type": update_author.get("accountType"),
-                    "created": comment["created"],
-                    "updated": comment["updated"]
-                }
-                comment_list.append(comment_dict)
-
-        # this is here only to create manifest file
-        JiraWriter(self.tables_out_path, 'comments', self.param_incremental)
 
         # This is the only table that is being saved in component.py, other tables use JiraWriter. The reason is
         # that I wanted to save both mentions and comments in a single field as sting and this was the easiest way.
         with open(os.path.join(self.tables_out_path, 'comments.csv'), mode="w", newline="") as output_file:
             writer = csv.DictWriter(output_file, fieldnames=FIELDS_COMMENTS, extrasaction="ignore")
-            writer.writerows(comment_list)
+            for issue_id in self.get_issue_ids(load_table_name, FIELDS_R_ISSUES, issue_id_col_name):
+                comments = self.client.get_comment(issue_id=issue_id)
+                if comments:
+                    writer.writerow(self.parse_comments(comments))
+
+        # this is here only to create manifest file
+        JiraWriter(self.tables_out_path, 'comments', self.param_incremental)
 
     def get_and_write_projects(self):
 
