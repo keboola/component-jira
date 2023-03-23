@@ -9,7 +9,7 @@ import dateparser
 from keboola.component import ComponentBase, UserException
 
 from client import JiraClient
-from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_R_ISSUES_CHANGELOGS, FIELDS_COMMENTS
+from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS
 
 KEY_USERNAME = 'username'
 KEY_TOKEN = '#token'
