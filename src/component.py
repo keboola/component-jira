@@ -187,17 +187,23 @@ class JiraComponent(ComponentBase):
     def get_and_write_projects(self):
 
         projects = self.client.get_projects()
-        JiraWriter(self.tables_out_path, 'projects', self.param_incremental).writerows(projects)
+        wr = JiraWriter(self.tables_out_path, 'projects', self.param_incremental)
+        wr.writerows(projects)
+        wr.close()
 
     def get_and_write_users(self):
 
         users = self.client.get_users()
-        JiraWriter(self.tables_out_path, 'users', self.param_incremental).writerows(users)
+        wr = JiraWriter(self.tables_out_path, 'users', self.param_incremental)
+        wr.writerows(users)
+        wr.close()
 
     def get_and_write_fields(self):
 
         fields = self.client.get_fields()
-        JiraWriter(self.tables_out_path, 'fields', self.param_incremental).writerows(fields)
+        wr = JiraWriter(self.tables_out_path, 'fields', self.param_incremental)
+        wr.writerows(fields)
+        wr.close()
 
     def get_and_write_worklogs(self):
 
@@ -209,10 +215,14 @@ class JiraComponent(ComponentBase):
         for w in worklogs:
             worklogs_out += [{**w, **{'comment': self.parse_description(w.get('comment', '')).strip('\n')}}]
 
-        JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental).writerows(worklogs_out)
+        wr = JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental)
+        wr.writerows(worklogs_out)
+        wr.close()
 
         worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
-        JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental).writerows(worklogs_deleted)
+        wr = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental)
+        wr.writerows(worklogs_deleted)
+        wr.close()
 
     def parse_description(self, description) -> str:
         if description is None:
@@ -260,6 +270,7 @@ class JiraComponent(ComponentBase):
 
         writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental)
 
+        writer_changelogs = None
         if 'issues_changelogs' in self.param_datasets:
             writer_changelogs = JiraWriter(self.tables_out_path, 'issues-changelogs', self.param_incremental)
 
@@ -317,6 +328,8 @@ class JiraComponent(ComponentBase):
 
             writer_issues.writerows(issues_f)
 
+        writer_issues.close()
+
         for issue in download_further_changelogs:
             all_changelogs = []
             _changelogs = [{**c, **{'issue_id': issue[0], 'issue_key': issue[1]}}
@@ -337,6 +350,8 @@ class JiraComponent(ComponentBase):
                     all_changelogs += [{**_out, **item}]
 
             writer_changelogs.writerows(all_changelogs)
+        if writer_changelogs:
+            writer_changelogs.close()
 
     def get_and_write_boards_and_sprints(self):
 
@@ -352,12 +367,14 @@ class JiraComponent(ComponentBase):
                             s.get('completeDate', self.param_since_date) >= self.param_since_date]
             sprints = [{**s, **{'board_id': board}} for s in sprints]
             sprint_writer.writerows(sprints)
+        sprint_writer.close()
 
         issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.param_incremental)
         for sprint in set(all_sprints):
             issues = self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
             issues = [{**i, **{'sprint_id': sprint}} for i in issues]
             issues_writer.writerows(issues)
+        issues_writer.close()
 
     def get_and_write_custom_jql(self, jql, table_name):
         offset = 0
@@ -384,6 +401,7 @@ class JiraComponent(ComponentBase):
                 _out['custom_fields'] = _custom
                 issues_f += [copy.deepcopy(_out)]
             writer_issues.writerows(issues_f)
+        writer_issues.close()
 
 
 if __name__ == "__main__":
