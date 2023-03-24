@@ -135,7 +135,6 @@ class JiraWriter:
     def close(self):
         self.csvfile.close()
 
-
     def writerows(self, listToWrite, parentDict=None):
 
         for row in listToWrite:
