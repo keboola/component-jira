@@ -127,9 +127,9 @@ class JiraWriter:
             json.dump(template, manifest)
 
     def createWriter(self):
-
-        self.writer = csv.DictWriter(open(self.paramTablePath, 'w'), fieldnames=self.paramFields,
-                                     restval='', extrasaction='ignore', quotechar='\"', quoting=csv.QUOTE_ALL)
+        with open(self.paramTablePath, 'w', newline='') as csvfile:
+            self.writer = csv.DictWriter(csvfile, fieldnames=self.paramFields,
+                                         restval='', extrasaction='ignore', quotechar='\"', quoting=csv.QUOTE_ALL)
 
     def writerows(self, listToWrite, parentDict=None):
 

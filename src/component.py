@@ -180,7 +180,7 @@ class JiraComponent(ComponentBase):
                     comments = self.parse_comments(issue_comments)
                     writer.writerows(comments)
 
-        table = self.create_out_table_definition(name="comments", columns=FIELDS_COMMENTS, primary_key=PK_COMMENTS,
+        table = self.create_out_table_definition(name="comments.csv", columns=FIELDS_COMMENTS, primary_key=PK_COMMENTS,
                                                  incremental=self.param_incremental)
         self.write_manifest(table)
 
