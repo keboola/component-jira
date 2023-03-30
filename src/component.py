@@ -1,12 +1,15 @@
 import copy
 import logging
 import sys
+import os
+import csv
+import re
 
 import dateparser
 from keboola.component import ComponentBase, UserException
 
 from client import JiraClient
-from result import JiraWriter
+from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
 
 KEY_USERNAME = 'username'
 KEY_TOKEN = '#token'
@@ -56,20 +59,151 @@ class JiraComponent(ComponentBase):
                                  username=self.param_username,
                                  api_token=self.param_token)
 
+    def run(self):
+
+        logging.info("Downloading projects.")
+        self.get_and_write_projects()
+
+        logging.info("Downloading a list of fields.")
+        self.get_and_write_fields()
+
+        logging.info("Downloading users.")
+        self.get_and_write_users()
+
+        self.check_issues_param()
+
+        if 'issues' in self.param_datasets:
+            logging.info("Downloading issues.")
+            self.get_and_write_issues()
+
+            if 'comments' in self.param_datasets:
+                logging.info("Downloading comments")
+                self.get_and_write_comments()
+
+        if 'boards_n_sprints' in self.param_datasets:
+            logging.info("Downloading boards and sprints.")
+            self.get_and_write_boards_and_sprints()
+
+        if 'worklogs' in self.param_datasets:
+            logging.info("Downloading worklogs.")
+            self.get_and_write_worklogs()
+
+        if self.custom_jqls:
+            for custom_jql in self.custom_jqls:
+                if not custom_jql.get(KEY_JQL):
+                    logging.exception("Custom JQL error: JQL is empty, must be filled in")
+                    sys.exit(1)
+                if not custom_jql.get(KEY_TABLE_NAME):
+                    logging.exception("Custom JQL error: table name is empty, must be filled in")
+                    sys.exit(1)
+                logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
+                self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+
+    def check_issues_param(self):
+        if 'issues' not in self.param_datasets:
+            if 'issues_changelogs' in self.param_datasets:
+                logging.warning("Issues need to be enabled in order to download issues changelogs.")
+            if 'comments' in self.param_datasets:
+                logging.warning("Issues need to be enabled in order to download issues comments.")
+
+    @staticmethod
+    def merge_text_and_mentions(data):
+        content_list = data["body"]["content"]
+        merged_string = ""
+        for content in content_list:
+            if content["type"] == "paragraph":
+                for c in content["content"]:
+                    if c["type"] == "text":
+                        merged_string += c["text"]
+                    elif c["type"] == "mention":
+                        merged_string += c["attrs"]["text"]
+        return merged_string
+
+    @staticmethod
+    def get_issue_id_from_url(url):
+        pattern = r"/issue/(\d+)"
+        match = re.search(pattern, url)
+        if match:
+            issue_id = match.group(1)
+            return issue_id
+        else:
+            logging.error("Cannot find issue_id in response during fetching comments.")
+            sys.exit(1)
+
+    @staticmethod
+    def get_issue_ids(table_name, table_cols, issue_id_col_name):
+        with open(table_name, 'r') as file:
+            r = csv.DictReader(file, fieldnames=table_cols)
+            for row in r:
+                yield row[issue_id_col_name]
+
+    def parse_comments(self, comments) -> list:
+        result = []
+        for comment in comments:
+            body_text = self.merge_text_and_mentions(comment)
+            update_author = comment.get("updateAuthor", {})
+            result.append({
+                "comment_id": comment["id"],
+                "issue_id": self.get_issue_id_from_url(comment["self"]),
+                "account_id": comment["author"].get("accountId"),
+                "email_address": comment["author"].get("emailAddress"),
+                "display_name": comment["author"].get("displayName"),
+                "active": comment["author"].get("active"),
+                "account_type": comment["author"].get("accountType"),
+                "text": body_text,
+                "update_author_account_id": update_author.get("accountId"),
+                "update_author_display_name": update_author.get("displayName"),
+                "update_author_active": update_author.get("active"),
+                "update_author_email_address": update_author.get("emailAddress"),
+                "update_author_account_type": update_author.get("accountType"),
+                "created": comment["created"],
+                "updated": comment["updated"]
+            })
+            return result
+
+    def get_and_write_comments(self):
+
+        load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
+        issue_id_col_name = 'id'
+
+        issue_ids = set()
+        for issue_id in self.get_issue_ids(load_table_name, FIELDS_R_ISSUES, issue_id_col_name):
+            issue_ids.add(issue_id)
+
+        # This is the only table that is being saved in component.py, other tables use JiraWriter. The reason is
+        # that I wanted to save both mentions and comments in a single field as sting and this was the easiest way.
+        with open(os.path.join(self.tables_out_path, 'comments.csv'), mode="w", newline="") as output_file:
+            writer = csv.DictWriter(output_file, fieldnames=FIELDS_COMMENTS, extrasaction="ignore")
+            for issue_id in issue_ids:
+                issue_comments = self.client.get_comments(issue_id=issue_id)
+                if issue_comments:
+                    comments = self.parse_comments(issue_comments)
+                    writer.writerows(comments)
+
+        table = self.create_out_table_definition(name="comments.csv", columns=FIELDS_COMMENTS, primary_key=PK_COMMENTS,
+                                                 incremental=self.param_incremental)
+        self.write_manifest(table)
+
     def get_and_write_projects(self):
 
         projects = self.client.get_projects()
-        JiraWriter(self.tables_out_path, 'projects', self.param_incremental).writerows(projects)
+        wr = JiraWriter(self.tables_out_path, 'projects', self.param_incremental)
+        wr.writerows(projects)
+        wr.close()
 
     def get_and_write_users(self):
 
         users = self.client.get_users()
-        JiraWriter(self.tables_out_path, 'users', self.param_incremental).writerows(users)
+        wr = JiraWriter(self.tables_out_path, 'users', self.param_incremental)
+        wr.writerows(users)
+        wr.close()
 
     def get_and_write_fields(self):
 
         fields = self.client.get_fields()
-        JiraWriter(self.tables_out_path, 'fields', self.param_incremental).writerows(fields)
+        wr = JiraWriter(self.tables_out_path, 'fields', self.param_incremental)
+        wr.writerows(fields)
+        wr.close()
 
     def get_and_write_worklogs(self):
 
@@ -81,10 +215,14 @@ class JiraComponent(ComponentBase):
         for w in worklogs:
             worklogs_out += [{**w, **{'comment': self.parse_description(w.get('comment', '')).strip('\n')}}]
 
-        JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental).writerows(worklogs_out)
+        wr = JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental)
+        wr.writerows(worklogs_out)
+        wr.close()
 
         worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
-        JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental).writerows(worklogs_deleted)
+        wr = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental)
+        wr.writerows(worklogs_deleted)
+        wr.close()
 
     def parse_description(self, description) -> str:
         if description is None:
@@ -132,6 +270,7 @@ class JiraComponent(ComponentBase):
 
         writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental)
 
+        writer_changelogs = None
         if 'issues_changelogs' in self.param_datasets:
             writer_changelogs = JiraWriter(self.tables_out_path, 'issues-changelogs', self.param_incremental)
 
@@ -189,6 +328,8 @@ class JiraComponent(ComponentBase):
 
             writer_issues.writerows(issues_f)
 
+        writer_issues.close()
+
         for issue in download_further_changelogs:
             all_changelogs = []
             _changelogs = [{**c, **{'issue_id': issue[0], 'issue_key': issue[1]}}
@@ -209,6 +350,8 @@ class JiraComponent(ComponentBase):
                     all_changelogs += [{**_out, **item}]
 
             writer_changelogs.writerows(all_changelogs)
+        if writer_changelogs:
+            writer_changelogs.close()
 
     def get_and_write_boards_and_sprints(self):
 
@@ -224,12 +367,14 @@ class JiraComponent(ComponentBase):
                             s.get('completeDate', self.param_since_date) >= self.param_since_date]
             sprints = [{**s, **{'board_id': board}} for s in sprints]
             sprint_writer.writerows(sprints)
+        sprint_writer.close()
 
         issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.param_incremental)
         for sprint in set(all_sprints):
             issues = self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
             issues = [{**i, **{'sprint_id': sprint}} for i in issues]
             issues_writer.writerows(issues)
+        issues_writer.close()
 
     def get_and_write_custom_jql(self, jql, table_name):
         offset = 0
@@ -256,43 +401,7 @@ class JiraComponent(ComponentBase):
                 _out['custom_fields'] = _custom
                 issues_f += [copy.deepcopy(_out)]
             writer_issues.writerows(issues_f)
-
-    def run(self):
-
-        logging.info("Downloading projects.")
-        self.get_and_write_projects()
-
-        logging.info("Downloading a list of fields.")
-        self.get_and_write_fields()
-
-        logging.info("Downloading users.")
-        self.get_and_write_users()
-
-        if 'issues' not in self.param_datasets and 'issues_changelogs' in self.param_datasets:
-            logging.warning("Issues need to be enabled in order to download issues changelogs.")
-
-        if 'issues' in self.param_datasets:
-            logging.info("Downloading issues.")
-            self.get_and_write_issues()
-
-        if 'boards_n_sprints' in self.param_datasets:
-            logging.info("Downloading boards and sprints.")
-            self.get_and_write_boards_and_sprints()
-
-        if 'worklogs' in self.param_datasets:
-            logging.info("Downloading worklogs.")
-            self.get_and_write_worklogs()
-
-        if self.custom_jqls:
-            for custom_jql in self.custom_jqls:
-                if not custom_jql.get(KEY_JQL):
-                    logging.exception("Custom JQL error: JQL is empty, must be filled in")
-                    sys.exit(1)
-                if not custom_jql.get(KEY_TABLE_NAME):
-                    logging.exception("Custom JQL error: table name is empty, must be filled in")
-                    sys.exit(1)
-                logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
-                self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+        writer_issues.close()
 
 
 if __name__ == "__main__":

@@ -46,6 +46,22 @@ class JiraClient(HttpClientBase):
             logging.exception(f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
             sys.exit(1)
 
+    def get_comments(self, issue_id: str):
+        url_comments = urljoin(self.base_url, f'issue/{issue_id}/comment')
+
+        r = self.get_raw(url=url_comments)
+        sc, js = r.status_code, r.json()
+
+        if sc == 200:
+            comments = js['comments']
+
+        else:
+            logging.error(f"Could not download comments for issue {issue_id}.")
+            logging.error(f"Received: {sc} - {js}.")
+            return {}
+
+        return comments
+
     def get_changelogs(self, issue_key):
 
         url_changelogs = urljoin(self.base_url, f'issue/{issue_key}/changelog')

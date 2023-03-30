@@ -52,6 +52,7 @@
       "type": "array",
       "format": "select",
       "title": "Datasets",
+      "description": "To fetch Issues Changelogs and Issues Comments, the Issues is also required.",
       "uniqueItems": true,
       "items": {
         "options": {
@@ -59,14 +60,16 @@
             "Issues",
             "Issues Changelogs",
             "Worklogs",
-            "Boards & Sprints"
+            "Boards & Sprints",
+            "Issues Comments"
           ]
         },
         "enum": [
           "issues",
           "issues_changelogs",
           "worklogs",
-          "boards_n_sprints"
+          "boards_n_sprints",
+          "comments"
         ],
         "type": "string"
       },
