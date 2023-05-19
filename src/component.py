@@ -205,24 +205,29 @@ class JiraComponent(ComponentBase):
         wr.writerows(fields)
         wr.close()
 
-    def get_and_write_worklogs(self):
-
+    def get_and_write_worklogs(self, batch_size=1000):
         _worklogs_u = [w['worklogId'] for w in self.client.get_updated_worklogs(self.param_since_unix)]
-        worklogs = self.client.get_worklogs(_worklogs_u)
-
-        worklogs_out = []
-
-        for w in worklogs:
-            worklogs_out += [{**w, **{'comment': self.parse_description(w.get('comment', '')).strip('\n')}}]
+        total_worklogs = len(_worklogs_u)
 
         wr = JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental)
-        wr.writerows(worklogs_out)
+
+        for i in range(0, total_worklogs, batch_size):
+            batch_worklog_ids = _worklogs_u[i:i + batch_size]
+            batch_worklogs = self.client.get_worklogs(batch_worklog_ids)
+
+            worklogs_out = []
+
+            for w in batch_worklogs:
+                worklogs_out.append({**w, **{'comment': self.parse_description(w.get('comment', '')).strip('\n')}})
+
+            wr.writerows(worklogs_out)
+
         wr.close()
 
         worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
-        wr = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental)
-        wr.writerows(worklogs_deleted)
-        wr.close()
+        wr_deleted = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental)
+        wr_deleted.writerows(worklogs_deleted)
+        wr_deleted.close()
 
     def parse_description(self, description) -> str:
         if description is None:
