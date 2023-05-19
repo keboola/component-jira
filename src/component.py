@@ -224,9 +224,17 @@ class JiraComponent(ComponentBase):
 
         wr.close()
 
-        worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
+        _worklogs_deleted = [w['worklogId'] for w in self.client.get_deleted_worklogs(self.param_since_unix)]
+        total_deleted_worklogs = len(_worklogs_deleted)
+
         wr_deleted = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental)
-        wr_deleted.writerows(worklogs_deleted)
+
+        for i in range(0, total_deleted_worklogs, batch_size):
+            batch_deleted_worklog_ids = _worklogs_deleted[i:i + batch_size]
+            batch_deleted_worklogs = self.client.get_deleted_worklogs(batch_deleted_worklog_ids)
+
+            wr_deleted.writerows(batch_deleted_worklogs)
+
         wr_deleted.close()
 
     def parse_description(self, description) -> str:
