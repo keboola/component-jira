@@ -159,7 +159,7 @@ class JiraComponent(ComponentBase):
                 "created": comment["created"],
                 "updated": comment["updated"]
             })
-            return result
+        return result
 
     def get_and_write_comments(self):
 
