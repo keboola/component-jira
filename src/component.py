@@ -7,21 +7,16 @@ import re
 
 import dateparser
 from keboola.component import ComponentBase, UserException
+from configuration import Configuration
+
+from memory_profiler import profile
+
 
 from client import JiraClient
 from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
 
-KEY_USERNAME = 'username'
-KEY_TOKEN = '#token'
-KEY_ORGANIZATION = 'organization_id'
-KEY_SINCE = 'since'
-KEY_INCREMENTAL = 'incremental'
-KEY_DATASETS = 'datasets'
-KEY_CUSTOM_JQL = "custom_jql"
 KEY_JQL = "jql"
 KEY_TABLE_NAME = "table_name"
-
-MANDATORY_PARAMS = [KEY_USERNAME, KEY_TOKEN, KEY_ORGANIZATION, KEY_SINCE, KEY_DATASETS]
 
 
 class JiraComponent(ComponentBase):
@@ -30,35 +25,24 @@ class JiraComponent(ComponentBase):
 
         super().__init__()
 
-        try:
-            self.validate_configuration_parameters(mandatory_params=MANDATORY_PARAMS)
+        self.validate_configuration_parameters(Configuration.get_dataclass_required_parameters())
+        self.cfg: Configuration = Configuration.load_from_dict(self.configuration.parameters)
 
-        except ValueError as e:
-            logging.exception(e)
-            sys.exit(1)
-
-        self.param_username = self.configuration.parameters[KEY_USERNAME]
-        self.param_token = self.configuration.parameters[KEY_TOKEN]
-        self.param_organization = self.configuration.parameters[KEY_ORGANIZATION]
-        self.param_since_raw = self.configuration.parameters[KEY_SINCE]
-        self.param_incremental = bool(self.configuration.parameters.get(KEY_INCREMENTAL, 1))
-        self.param_datasets = self.configuration.parameters[KEY_DATASETS]
-        self.custom_jqls = self.configuration.parameters.get(KEY_CUSTOM_JQL)
-
-        _parsed_date = dateparser.parse(self.param_since_raw)
+        _parsed_date = dateparser.parse(self.cfg.since)
 
         if _parsed_date is None:
-            logging.exception(f"Could not recognize date \"{self.param_since_raw}\".")
+            logging.exception(f"Could not recognize date \"{self.cfg.since}\".")
             sys.exit(1)
 
         else:
             self.param_since_date = _parsed_date.strftime('%Y-%m-%d')
             self.param_since_unix = int(_parsed_date.timestamp() * 1000)
 
-        self.client = JiraClient(organization_id=self.param_organization,
-                                 username=self.param_username,
-                                 api_token=self.param_token)
+        self.client = JiraClient(organization_id=self.cfg.organization_id,
+                                 username=self.cfg.username,
+                                 api_token=self.cfg.pswd_token)
 
+    @profile
     def run(self):
 
         logging.info("Downloading projects.")
@@ -72,24 +56,24 @@ class JiraComponent(ComponentBase):
 
         self.check_issues_param()
 
-        if 'issues' in self.param_datasets:
+        if 'issues' in self.cfg.datasets:
             logging.info("Downloading issues.")
             self.get_and_write_issues()
 
-            if 'comments' in self.param_datasets:
+            if 'comments' in self.cfg.datasets:
                 logging.info("Downloading comments")
                 self.get_and_write_comments()
 
-        if 'boards_n_sprints' in self.param_datasets:
+        if 'boards_n_sprints' in self.cfg.datasets:
             logging.info("Downloading boards and sprints.")
             self.get_and_write_boards_and_sprints()
 
-        if 'worklogs' in self.param_datasets:
+        if 'worklogs' in self.cfg.datasets:
             logging.info("Downloading worklogs.")
             self.get_and_write_worklogs()
 
-        if self.custom_jqls:
-            for custom_jql in self.custom_jqls:
+        if self.cfg.custom_jql:
+            for custom_jql in self.cfg.custom_jql:
                 if not custom_jql.get(KEY_JQL):
                     logging.exception("Custom JQL error: JQL is empty, must be filled in")
                     sys.exit(1)
@@ -100,10 +84,10 @@ class JiraComponent(ComponentBase):
                 self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
 
     def check_issues_param(self):
-        if 'issues' not in self.param_datasets:
-            if 'issues_changelogs' in self.param_datasets:
+        if 'issues' not in self.cfg.datasets:
+            if 'issues_changelogs' in self.cfg.datasets:
                 logging.warning("Issues need to be enabled in order to download issues changelogs.")
-            if 'comments' in self.param_datasets:
+            if 'comments' in self.cfg.datasets:
                 logging.warning("Issues need to be enabled in order to download issues comments.")
 
     @staticmethod
@@ -181,27 +165,27 @@ class JiraComponent(ComponentBase):
                     writer.writerows(comments)
 
         table = self.create_out_table_definition(name="comments.csv", columns=FIELDS_COMMENTS, primary_key=PK_COMMENTS,
-                                                 incremental=self.param_incremental)
+                                                 incremental=self.cfg.incremental)
         self.write_manifest(table)
 
     def get_and_write_projects(self):
-
+        
         projects = self.client.get_projects()
-        wr = JiraWriter(self.tables_out_path, 'projects', self.param_incremental)
+        wr = JiraWriter(self.tables_out_path, 'projects', self.cfg.incremental)
         wr.writerows(projects)
         wr.close()
 
     def get_and_write_users(self):
 
         users = self.client.get_users()
-        wr = JiraWriter(self.tables_out_path, 'users', self.param_incremental)
+        wr = JiraWriter(self.tables_out_path, 'users', self.cfg.incremental)
         wr.writerows(users)
         wr.close()
 
     def get_and_write_fields(self):
 
         fields = self.client.get_fields()
-        wr = JiraWriter(self.tables_out_path, 'fields', self.param_incremental)
+        wr = JiraWriter(self.tables_out_path, 'fields', self.cfg.incremental)
         wr.writerows(fields)
         wr.close()
 
@@ -209,7 +193,7 @@ class JiraComponent(ComponentBase):
         _worklogs_u = [w['worklogId'] for w in self.client.get_updated_worklogs(self.param_since_unix)]
         total_worklogs = len(_worklogs_u)
 
-        wr = JiraWriter(self.tables_out_path, 'worklogs', self.param_incremental)
+        wr = JiraWriter(self.tables_out_path, 'worklogs', self.cfg.incremental)
 
         for i in range(0, total_worklogs, batch_size):
             batch_worklog_ids = _worklogs_u[i:i + batch_size]
@@ -225,7 +209,7 @@ class JiraComponent(ComponentBase):
         wr.close()
 
         worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
-        wr = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.param_incremental)
+        wr = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.cfg.incremental)
         wr.writerows(worklogs_deleted)
         wr.close()
 
@@ -273,11 +257,11 @@ class JiraComponent(ComponentBase):
         is_complete = False
         download_further_changelogs = []
 
-        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental)
+        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.cfg.incremental)
 
         writer_changelogs = None
-        if 'issues_changelogs' in self.param_datasets:
-            writer_changelogs = JiraWriter(self.tables_out_path, 'issues-changelogs', self.param_incremental)
+        if 'issues_changelogs' in self.cfg.datasets:
+            writer_changelogs = JiraWriter(self.tables_out_path, 'issues-changelogs', self.cfg.incremental)
 
         while is_complete is False:
 
@@ -304,7 +288,7 @@ class JiraComponent(ComponentBase):
                 _out['custom_fields'] = _custom
                 issues_f += [copy.deepcopy(_out)]
 
-                if 'issues_changelogs' in self.param_datasets:
+                if 'issues_changelogs' in self.cfg.datasets:
                     _changelog = issue['changelog']
 
                     if _changelog['maxResults'] < _changelog['total']:
@@ -362,9 +346,9 @@ class JiraComponent(ComponentBase):
 
         boards = self.client.get_all_boards()
         _boards = [b['id'] for b in boards]
-        JiraWriter(self.tables_out_path, 'boards', self.param_incremental).writerows(boards)
+        JiraWriter(self.tables_out_path, 'boards', self.cfg.incremental).writerows(boards)
 
-        sprint_writer = JiraWriter(self.tables_out_path, 'sprints', self.param_incremental)
+        sprint_writer = JiraWriter(self.tables_out_path, 'sprints', self.cfg.incremental)
         all_sprints = []
         for board in _boards:
             sprints = self.client.get_board_sprints(board)
@@ -374,7 +358,7 @@ class JiraComponent(ComponentBase):
             sprint_writer.writerows(sprints)
         sprint_writer.close()
 
-        issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.param_incremental)
+        issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.cfg.incremental)
         for sprint in set(all_sprints):
             issues = self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
             issues = [{**i, **{'sprint_id': sprint}} for i in issues]
@@ -384,7 +368,7 @@ class JiraComponent(ComponentBase):
     def get_and_write_custom_jql(self, jql, table_name):
         offset = 0
         is_complete = False
-        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.param_incremental, custom_name=table_name)
+        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.cfg.incremental, custom_name=table_name)
 
         while is_complete is False:
             issues, is_complete, offset = self.client.get_custom_jql(jql, offset=offset)
