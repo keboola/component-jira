@@ -1,5 +1,6 @@
 import logging
-import sys
+from keboola.component import UserException
+
 from urllib.parse import urljoin
 
 from kbc.client_base import HttpClientBase
@@ -38,13 +39,11 @@ class JiraClient(HttpClientBase):
 
         elif rsp_projects.status_code == 403 and \
                 'Basic auth with password is not allowed on this instance' in rsp_projects.text:
-            logging.exception("Could not authenticate against the API. Please, check the API token.")
-            sys.exit(1)
+            raise UserException("Could not authenticate against the API. Please, check the API token.")
 
         else:
-            logging.exception(f"Unable to authenticate against {self.param_base_url}.")
-            logging.exception(f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
-            sys.exit(1)
+            raise UserException(f"Unable to authenticate against {self.param_base_url}."
+                                f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
 
     def get_comments(self, issue_id: str):
         url_comments = urljoin(self.base_url, f'issue/{issue_id}/comment')
@@ -84,9 +83,8 @@ class JiraClient(HttpClientBase):
                 is_complete = js_changelogs['isLast']
 
             else:
-                logging.error(f"Could not download changelogs for issue {issue_key}.")
-                logging.error(f"Received: {sc_changelogs} - {js_changelogs}.")
-                sys.exit(1)
+                raise UserException(f"Could not download changelogs for issue {issue_key}."
+                                    f"Received: {sc_changelogs} - {js_changelogs}.")
 
         return all_changelogs
 
@@ -117,9 +115,8 @@ class JiraClient(HttpClientBase):
             return issues, is_complete, offset
 
         else:
-            logging.exception("Could not download issues.")
-            logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
-            sys.exit(1)
+            raise UserException(f"Could not download issues."
+                                f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
     def get_users(self):
 
@@ -147,9 +144,8 @@ class JiraClient(HttpClientBase):
                     offset += MAX_RESULTS
 
             else:
-                logging.exception("Could not download users.")
-                logging.error(f"Received: {rsp_users.status_code} - {rsp_users.text}.")
-                sys.exit(1)
+                raise UserException(f"Could not download users."
+                                    f"Received: {rsp_users.status_code} - {rsp_users.text}.")
 
         return all_users
 
@@ -166,9 +162,8 @@ class JiraClient(HttpClientBase):
             return rsp_fields.json()
 
         else:
-            logging.exception("Could not download fields.")
-            logging.error(f"Received: {rsp_fields.status_code} - {rsp_fields.text}.")
-            sys.exit(1)
+            raise UserException(f"Could not download fields."
+                                f"Received: {rsp_fields.status_code} - {rsp_fields.text}.")
 
     @staticmethod
     def split_list_to_chunks(list_split, chunk_size):
@@ -202,9 +197,8 @@ class JiraClient(HttpClientBase):
                     param_since = js_worklogs['until']
 
             else:
-                logging.exception("Could not download deleted worklogs.")
-                logging.error(f"Received: {rsp_deleted.status_code} - {rsp_deleted.text}.")
-                sys.exit(1)
+                raise UserException(f"Could not download deleted worklogs."
+                                    f"Received: {rsp_deleted.status_code} - {rsp_deleted.text}.")
 
         return all_worklogs
 
@@ -234,9 +228,8 @@ class JiraClient(HttpClientBase):
                     param_since = js_worklogs['until']
 
             else:
-                logging.exception("Could not download updated worklogs.")
-                logging.error(f"Received: {rsp_updated.status_code} - {rsp_updated.text}.")
-                sys.exit(1)
+                raise UserException(f"Could not download updated worklogs."
+                                    f"Received: {rsp_updated.status_code} - {rsp_updated.text}.")
 
         return all_worklogs
 
@@ -254,9 +247,8 @@ class JiraClient(HttpClientBase):
                 all_worklogs += rsp_worklogs.json()
 
             else:
-                logging.exception("Could not download changed worklogs.")
-                logging.error(f"Received: {rsp_worklogs.status_code} - {rsp_worklogs.json()}.")
-                sys.exit(1)
+                raise UserException(f"Could not download changed worklogs."
+                                    f"Received: {rsp_worklogs.status_code} - {rsp_worklogs.text}.")
 
         return all_worklogs
 
@@ -282,9 +274,8 @@ class JiraClient(HttpClientBase):
                 offset += MAX_RESULTS_AGILE
 
             else:
-                logging.exception("Could not download boards.")
-                logging.error(f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
-                sys.exit(1)
+                raise UserException(f"Could not download boards."
+                                    f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
 
         return all_boards
 
@@ -313,9 +304,8 @@ class JiraClient(HttpClientBase):
             return issues, is_complete, offset
 
         else:
-            logging.exception("Could not download custom JQL.")
-            logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
-            sys.exit(1)
+            raise UserException(f"Could not download custom JQL."
+                                f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
     def get_board_sprints(self, board_id):
 
@@ -346,9 +336,8 @@ class JiraClient(HttpClientBase):
                 break
 
             else:
-                logging.exception(f"Could not download sprints for board {board_id}.")
-                logging.error(f"Received: {rsp_sprints.status_code} - {rsp_sprints.text}.")
-                sys.exit(1)
+                raise UserException(f"Could not download sprints for board {board_id}."
+                                    f"Received: {rsp_sprints.status_code} - {rsp_sprints.text}.")
 
         return all_sprints
 
@@ -381,8 +370,7 @@ class JiraClient(HttpClientBase):
                     offset += MAX_RESULTS
 
             else:
-                logging.exception(f"Could not download issues for sprint {sprint_id}.")
-                logging.error(f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
-                sys.exit(1)
+                raise UserException(f"Could not download issues for sprint {sprint_id}."
+                                    f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
         return all_issues

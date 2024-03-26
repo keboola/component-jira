@@ -1,6 +1,5 @@
 import copy
 import logging
-import sys
 import os
 import csv
 import re
@@ -31,8 +30,7 @@ class JiraComponent(ComponentBase):
         _parsed_date = dateparser.parse(self.cfg.since)
 
         if _parsed_date is None:
-            logging.exception(f"Could not recognize date \"{self.cfg.since}\".")
-            sys.exit(1)
+            raise UserException(f"Could not recognize date \"{self.cfg.since}\".")
 
         else:
             self.param_since_date = _parsed_date.strftime('%Y-%m-%d')
@@ -75,11 +73,9 @@ class JiraComponent(ComponentBase):
         if self.cfg.custom_jql:
             for custom_jql in self.cfg.custom_jql:
                 if not custom_jql.get(KEY_JQL):
-                    logging.exception("Custom JQL error: JQL is empty, must be filled in")
-                    sys.exit(1)
+                    raise UserException("Custom JQL error: JQL is empty, must be filled in")
                 if not custom_jql.get(KEY_TABLE_NAME):
-                    logging.exception("Custom JQL error: table name is empty, must be filled in")
-                    sys.exit(1)
+                    raise UserException("Custom JQL error: table name is empty, must be filled in")
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
                 self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
 
@@ -111,8 +107,7 @@ class JiraComponent(ComponentBase):
             issue_id = match.group(1)
             return issue_id
         else:
-            logging.error("Cannot find issue_id in response during fetching comments.")
-            sys.exit(1)
+            raise UserException("Cannot find issue_id in response during fetching comments.")
 
     @staticmethod
     def get_issue_ids(table_name, table_cols, issue_id_col_name):
