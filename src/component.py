@@ -9,6 +9,8 @@ from keboola.component import ComponentBase, UserException
 from configuration import Configuration
 
 from memory_profiler import profile
+import datetime
+
 
 
 from client import JiraClient
@@ -42,6 +44,7 @@ class JiraComponent(ComponentBase):
 
     @profile
     def run(self):
+        start_time = datetime.datetime.now()
 
         logging.info("Downloading projects.")
         self.get_and_write_projects()
@@ -78,6 +81,8 @@ class JiraComponent(ComponentBase):
                     raise UserException("Custom JQL error: table name is empty, must be filled in")
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
                 self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+
+        logging.info(f"Script runtime: {datetime.datetime.now() - start_time}")
 
     def check_issues_param(self):
         if 'issues' not in self.cfg.datasets:

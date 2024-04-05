@@ -35,7 +35,10 @@ class JiraClient(HttpClientBase):
         rsp_projects = self.get_raw(url=url_projects, params=par_projects)
 
         if rsp_projects.status_code == 200:
-            return rsp_projects.json()
+            # return rsp_projects.json()
+            projects = rsp_projects.json()
+            for project in projects:
+                yield project
 
         elif rsp_projects.status_code == 403 and \
                 'Basic auth with password is not allowed on this instance' in rsp_projects.text:
@@ -117,6 +120,39 @@ class JiraClient(HttpClientBase):
         else:
             raise UserException(f"Could not download issues."
                                 f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
+
+    def get_issues_gen(self, update_date=None):
+        url_issues = urljoin(self.param_base_url, 'search')
+        param_jql = f'updated >= {update_date}' if update_date is not None else None
+        offset = 0
+
+        while True:
+            params_issues = {
+                'startAt': offset,
+                'jql': param_jql,
+                'maxResults': MAX_RESULTS,
+                'expand': 'changelog'
+            }
+
+            rsp_issues = self.get_raw(url=url_issues, params=params_issues)
+
+            if rsp_issues.status_code == 200:
+                issues = rsp_issues.json()['issues']
+
+                if not issues:
+                    break  # No more issues to fetch
+
+                for issue in issues:
+                    yield issue
+
+                if len(issues) < MAX_RESULTS:
+                    break  # We've reached the end of the issues
+
+                offset += MAX_RESULTS  # Prepare for the next batch of issues
+
+            else:
+                raise UserException(f"Could not download issues."
+                                    f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
     def get_users(self):
 
@@ -255,6 +291,33 @@ class JiraClient(HttpClientBase):
     def get_all_boards(self):
 
         url_boards = urljoin(self.param_agile_url, 'board')
+        offset = 0
+        is_complete = False
+        all_boards = []
+
+        while is_complete is False:
+            params_boards = {
+                'startAt': offset,
+                'maxResults': MAX_RESULTS_AGILE
+            }
+
+            rsp_boards = self.get_raw(url=url_boards, params=params_boards)
+
+            if rsp_boards.status_code == 200:
+                _brd = rsp_boards.json()
+                all_boards += _brd['values']
+                is_complete = _brd['isLast']
+                offset += MAX_RESULTS_AGILE
+
+            else:
+                raise UserException(f"Could not download boards."
+                                    f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
+
+        return all_boards
+
+    def get_all_customers(self):
+
+        url_boards = urljoin(self.param_base_url, 'board')
         offset = 0
         is_complete = False
         all_boards = []
