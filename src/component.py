@@ -4,14 +4,14 @@ import os
 import csv
 import re
 
+import asyncio
+
 import dateparser
 from keboola.component import ComponentBase, UserException
 from configuration import Configuration
 
 from memory_profiler import profile
 import datetime
-
-
 
 from client import JiraClient
 from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
@@ -42,36 +42,41 @@ class JiraComponent(ComponentBase):
                                  username=self.cfg.username,
                                  api_token=self.cfg.pswd_token)
 
-    @profile
     def run(self):
+        asyncio.run(self.run_async())
+
+    @profile
+    async def run_async(self):
         start_time = datetime.datetime.now()
 
+        tasks = []
+
         logging.info("Downloading projects.")
-        self.get_and_write_projects()
+        tasks.append(self.get_and_write_projects())
 
         logging.info("Downloading a list of fields.")
-        self.get_and_write_fields()
+        tasks.append(self.get_and_write_fields())
 
         logging.info("Downloading users.")
-        self.get_and_write_users()
+        tasks.append(self.get_and_write_users())
 
         self.check_issues_param()
 
         if 'issues' in self.cfg.datasets:
             logging.info("Downloading issues.")
-            self.get_and_write_issues()
+            await self.get_and_write_issues()
 
             if 'comments' in self.cfg.datasets:
                 logging.info("Downloading comments")
-                self.get_and_write_comments()
+                tasks.append(self.get_and_write_comments())
 
         if 'boards_n_sprints' in self.cfg.datasets:
             logging.info("Downloading boards and sprints.")
-            self.get_and_write_boards_and_sprints()
+            tasks.append(self.get_and_write_boards_and_sprints())
 
         if 'worklogs' in self.cfg.datasets:
             logging.info("Downloading worklogs.")
-            self.get_and_write_worklogs()
+            tasks.append(self.get_and_write_worklogs())
 
         if self.cfg.custom_jql:
             for custom_jql in self.cfg.custom_jql:
@@ -80,7 +85,9 @@ class JiraComponent(ComponentBase):
                 if not custom_jql.get(KEY_TABLE_NAME):
                     raise UserException("Custom JQL error: table name is empty, must be filled in")
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
-                self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+                tasks.append(self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME)))
+
+        await asyncio.gather(*tasks)
 
         logging.info(f"Script runtime: {datetime.datetime.now() - start_time}")
 
@@ -145,7 +152,7 @@ class JiraComponent(ComponentBase):
             })
         return result
 
-    def get_and_write_comments(self):
+    async def get_and_write_comments(self):
 
         load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
         issue_id_col_name = 'id'
@@ -159,7 +166,7 @@ class JiraComponent(ComponentBase):
         with open(os.path.join(self.tables_out_path, 'comments.csv'), mode="w", newline="") as output_file:
             writer = csv.DictWriter(output_file, fieldnames=FIELDS_COMMENTS, extrasaction="ignore")
             for issue_id in issue_ids:
-                issue_comments = self.client.get_comments(issue_id=issue_id)
+                issue_comments = await self.client.get_comments(issue_id=issue_id)
                 if issue_comments:
                     comments = self.parse_comments(issue_comments)
                     writer.writerows(comments)
@@ -168,29 +175,29 @@ class JiraComponent(ComponentBase):
                                                  incremental=self.cfg.incremental)
         self.write_manifest(table)
 
-    def get_and_write_projects(self):
+    async def get_and_write_projects(self):
         
-        projects = self.client.get_projects()
+        projects = await self.client.get_projects()
         wr = JiraWriter(self.tables_out_path, 'projects', self.cfg.incremental)
         wr.writerows(projects)
         wr.close()
 
-    def get_and_write_users(self):
+    async def get_and_write_users(self):
 
-        users = self.client.get_users()
+        users = await self.client.get_users()
         wr = JiraWriter(self.tables_out_path, 'users', self.cfg.incremental)
         wr.writerows(users)
         wr.close()
 
-    def get_and_write_fields(self):
+    async def get_and_write_fields(self):
 
-        fields = self.client.get_fields()
+        fields = await self.client.get_fields()
         wr = JiraWriter(self.tables_out_path, 'fields', self.cfg.incremental)
         wr.writerows(fields)
         wr.close()
 
-    def get_and_write_worklogs(self, batch_size=1000):
-        _worklogs_u = [w['worklogId'] for w in self.client.get_updated_worklogs(self.param_since_unix)]
+    async def get_and_write_worklogs(self, batch_size=1000):
+        _worklogs_u = [w['worklogId'] for w in await self.client.get_updated_worklogs(self.param_since_unix)]
         total_worklogs = len(_worklogs_u)
 
         wr = JiraWriter(self.tables_out_path, 'worklogs', self.cfg.incremental)
@@ -252,7 +259,7 @@ class JiraComponent(ComponentBase):
 
         return text
 
-    def get_and_write_issues(self):
+    async def get_and_write_issues(self):
         offset = 0
         is_complete = False
         download_further_changelogs = []
@@ -265,7 +272,7 @@ class JiraComponent(ComponentBase):
 
         while is_complete is False:
 
-            issues, is_complete, offset = self.client.get_issues(self.param_since_date, offset=offset)
+            issues, is_complete, offset = await self.client.get_issues(self.param_since_date, offset=offset)
             issues_f = []
 
             for issue in issues:
@@ -322,7 +329,7 @@ class JiraComponent(ComponentBase):
         for issue in download_further_changelogs:
             all_changelogs = []
             _changelogs = [{**c, **{'issue_id': issue[0], 'issue_key': issue[1]}}
-                           for c in self.client.get_changelogs(issue[1])]
+                           for c in await self.client.get_changelogs(issue[1])]
 
             for changelog in _changelogs:
                 _out = dict()
@@ -342,7 +349,7 @@ class JiraComponent(ComponentBase):
         if writer_changelogs:
             writer_changelogs.close()
 
-    def get_and_write_boards_and_sprints(self):
+    async def get_and_write_boards_and_sprints(self):
 
         boards = self.client.get_all_boards()
         _boards = [b['id'] for b in boards]
@@ -351,7 +358,7 @@ class JiraComponent(ComponentBase):
         sprint_writer = JiraWriter(self.tables_out_path, 'sprints', self.cfg.incremental)
         all_sprints = []
         for board in _boards:
-            sprints = self.client.get_board_sprints(board)
+            sprints = await self.client.get_board_sprints(board)
             all_sprints += [s['id'] for s in sprints if
                             s.get('completeDate', self.param_since_date) >= self.param_since_date]
             sprints = [{**s, **{'board_id': board}} for s in sprints]
@@ -360,18 +367,18 @@ class JiraComponent(ComponentBase):
 
         issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.cfg.incremental)
         for sprint in set(all_sprints):
-            issues = self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
+            issues = await self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
             issues = [{**i, **{'sprint_id': sprint}} for i in issues]
             issues_writer.writerows(issues)
         issues_writer.close()
 
-    def get_and_write_custom_jql(self, jql, table_name):
+    async def get_and_write_custom_jql(self, jql, table_name):
         offset = 0
         is_complete = False
         writer_issues = JiraWriter(self.tables_out_path, 'issues', self.cfg.incremental, custom_name=table_name)
 
         while is_complete is False:
-            issues, is_complete, offset = self.client.get_custom_jql(jql, offset=offset)
+            issues, is_complete, offset = await self.client.get_custom_jql(jql, offset=offset)
             issues_f = []
             for issue in issues:
                 _out = {

@@ -5,13 +5,16 @@ from urllib.parse import urljoin
 
 from kbc.client_base import HttpClientBase
 
+from keboola.http_client.async_client import AsyncHttpClient
+
+
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
 MAX_RESULTS = 100
 MAX_RESULTS_AGILE = 50
 
 
-class JiraClient(HttpClientBase):
+class JiraClient(AsyncHttpClient):
 
     def __init__(self, organization_id, username, api_token):
 
@@ -20,25 +23,20 @@ class JiraClient(HttpClientBase):
         self.param_username = username
         self.param_api_token = api_token
 
-        super().__init__(self.param_base_url, auth=(self.param_username, self.param_api_token), max_retries=5,
-                         default_http_header={
+        super().__init__(self.param_base_url, auth=(self.param_username, self.param_api_token), retries=5,
+                         default_headers={
                              'accept': 'application/json',
                              'content-type': 'application/json'
                          })
 
-        _ = self.get_projects()
-
-    def get_projects(self):
+    async def get_projects(self):
 
         url_projects = urljoin(self.base_url, 'project')
         par_projects = {'expand': 'description'}
-        rsp_projects = self.get_raw(url=url_projects, params=par_projects)
+        rsp_projects = await self.get_raw(endpoint=url_projects, params=par_projects)
 
         if rsp_projects.status_code == 200:
-            # return rsp_projects.json()
-            projects = rsp_projects.json()
-            for project in projects:
-                yield project
+            return rsp_projects.json()
 
         elif rsp_projects.status_code == 403 and \
                 'Basic auth with password is not allowed on this instance' in rsp_projects.text:
@@ -48,10 +46,10 @@ class JiraClient(HttpClientBase):
             raise UserException(f"Unable to authenticate against {self.param_base_url}."
                                 f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
 
-    def get_comments(self, issue_id: str):
+    async def get_comments(self, issue_id: str):
         url_comments = urljoin(self.base_url, f'issue/{issue_id}/comment')
 
-        r = self.get_raw(url=url_comments)
+        r = await self.get_raw(endpoint=url_comments)
         sc, js = r.status_code, r.json()
 
         if sc == 200:
@@ -64,7 +62,7 @@ class JiraClient(HttpClientBase):
 
         return comments
 
-    def get_changelogs(self, issue_key):
+    async def get_changelogs(self, issue_key):
 
         url_changelogs = urljoin(self.base_url, f'issue/{issue_key}/changelog')
         offset = 0
@@ -77,7 +75,7 @@ class JiraClient(HttpClientBase):
                 'maxResults': MAX_RESULTS
             }
 
-            rsp_changelogs = self.get_raw(url=url_changelogs, params=params_changelogs)
+            rsp_changelogs = await self.get_raw(endpoint=url_changelogs, params=params_changelogs)
             sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
 
             if sc_changelogs == 200:
@@ -91,7 +89,7 @@ class JiraClient(HttpClientBase):
 
         return all_changelogs
 
-    def get_issues(self, update_date=None, offset=0):
+    async def get_issues(self, update_date=None, offset=0):
 
         url_issues = urljoin(self.param_base_url, 'search')
         param_jql = f'updated >= {update_date}' if update_date is not None else None
@@ -104,7 +102,7 @@ class JiraClient(HttpClientBase):
             'expand': 'changelog'
         }
 
-        rsp_issues = self.get_raw(url=url_issues, params=params_issues)
+        rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
         if rsp_issues.status_code == 200:
             issues = rsp_issues.json()['issues']
@@ -154,7 +152,7 @@ class JiraClient(HttpClientBase):
                 raise UserException(f"Could not download issues."
                                     f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
-    def get_users(self):
+    async def get_users(self):
 
         url_users = urljoin(self.param_base_url, 'users')
         offset = 0
@@ -167,7 +165,7 @@ class JiraClient(HttpClientBase):
                 'maxResults': MAX_RESULTS
             }
 
-            rsp_users = self.get_raw(url=url_users, params=params_users)
+            rsp_users = await self.get_raw(endpoint=url_users, params=params_users)
 
             if rsp_users.status_code == 200:
                 _usr = rsp_users.json()
@@ -185,14 +183,14 @@ class JiraClient(HttpClientBase):
 
         return all_users
 
-    def get_fields(self):
+    async def get_fields(self):
 
         url_fields = urljoin(self.param_base_url, 'field')
         params_fields = {
             'expand': 'projects.issuetypes.fields'
         }
 
-        rsp_fields = self.get_raw(url=url_fields, params=params_fields)
+        rsp_fields = await self.get_raw(endpoint=url_fields, params=params_fields)
 
         if rsp_fields.status_code == 200:
             return rsp_fields.json()
@@ -238,7 +236,7 @@ class JiraClient(HttpClientBase):
 
         return all_worklogs
 
-    def get_updated_worklogs(self, since=None):
+    async def get_updated_worklogs(self, since=None):
 
         url_updated = urljoin(self.param_base_url, 'worklog/updated')
         param_since = since
@@ -251,7 +249,7 @@ class JiraClient(HttpClientBase):
                 'since': param_since
             }
 
-            rsp_updated = self.get_raw(url=url_updated, params=params_updated)
+            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
 
             if rsp_updated.status_code == 200:
                 js_worklogs = rsp_updated.json()
@@ -342,7 +340,7 @@ class JiraClient(HttpClientBase):
 
         return all_boards
 
-    def get_custom_jql(self, jql, offset=0):
+    async def get_custom_jql(self, jql, offset=0):
         url_issues = urljoin(self.param_base_url, 'search')
         is_complete = False
 
@@ -353,7 +351,7 @@ class JiraClient(HttpClientBase):
             'expand': 'changelog'
         }
 
-        rsp_issues = self.get_raw(url=url_issues, params=params_issues)
+        rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
         if rsp_issues.status_code == 200:
             issues = rsp_issues.json()['issues']
@@ -370,7 +368,7 @@ class JiraClient(HttpClientBase):
             raise UserException(f"Could not download custom JQL."
                                 f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
-    def get_board_sprints(self, board_id):
+    async def get_board_sprints(self, board_id):
 
         url_sprints = urljoin(self.param_agile_url, f'board/{board_id}/sprint')
         offset = 0
@@ -383,7 +381,7 @@ class JiraClient(HttpClientBase):
                 'maxResults': MAX_RESULTS_AGILE
             }
 
-            rsp_sprints = self.get_raw(url_sprints, params=params_sprints)
+            rsp_sprints = await self.get_raw(url_sprints, params=params_sprints)
 
             if rsp_sprints.status_code == 200:
                 _sprt = rsp_sprints.json()
