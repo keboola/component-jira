@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import List, Dict
 import dataconf
 from enum import Enum
-from pyhocon.config_tree import ConfigTree
 
 
 class ConfigurationBase:

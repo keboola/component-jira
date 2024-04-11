@@ -1,10 +1,6 @@
 import logging
 from keboola.component import UserException
-
 from urllib.parse import urljoin
-
-from kbc.client_base import HttpClientBase
-
 from keboola.http_client.async_client import AsyncHttpClient
 
 

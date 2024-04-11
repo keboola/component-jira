@@ -10,9 +10,6 @@ import dateparser
 from keboola.component import ComponentBase, UserException
 from configuration import Configuration
 
-from memory_profiler import profile
-import datetime
-
 from client import JiraClient
 from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
 
@@ -45,9 +42,7 @@ class JiraComponent(ComponentBase):
     def run(self):
         asyncio.run(self.run_async())
 
-    @profile
     async def run_async(self):
-        start_time = datetime.datetime.now()
 
         tasks = []
 
@@ -88,8 +83,6 @@ class JiraComponent(ComponentBase):
                 tasks.append(self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME)))
 
         await asyncio.gather(*tasks)
-
-        logging.info(f"Script runtime: {datetime.datetime.now() - start_time}")
 
     def check_issues_param(self):
         if 'issues' not in self.cfg.datasets:
@@ -176,7 +169,6 @@ class JiraComponent(ComponentBase):
         self.write_manifest(table)
 
     async def get_and_write_projects(self):
-        
         projects = await self.client.get_projects()
         wr = JiraWriter(self.tables_out_path, 'projects', self.cfg.incremental)
         wr.writerows(projects)
