@@ -26,6 +26,8 @@ class JiraComponent(ComponentBase):
         self.validate_configuration_parameters(Configuration.get_dataclass_required_parameters())
         self.cfg: Configuration = Configuration.load_from_dict(self.configuration.parameters)
 
+        self.cfg.incremental = bool(self.cfg.incremental)
+
         _parsed_date = dateparser.parse(self.cfg.since)
 
         if _parsed_date is None:

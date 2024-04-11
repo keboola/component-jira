@@ -3,7 +3,6 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Dict
 import dataconf
-from enum import Enum
 
 
 class ConfigurationBase:
@@ -44,24 +43,6 @@ class ConfigurationBase:
                 if f.default == dataclasses.MISSING
                 and f.default_factory == dataclasses.MISSING
                 ]
-
-
-class LoadType(str, Enum):
-    full_load = "full_load"
-    incremental_load = "incremental_load"
-
-    def is_incremental(self) -> bool:
-        return self.value == self.incremental_load
-
-
-@dataclass
-class Credentials(ConfigurationBase):
-    pswd_api_token: str
-
-
-@dataclass
-class RunParameters(ConfigurationBase):
-    wait_until_finished: bool
 
 
 @dataclass
