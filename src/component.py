@@ -196,7 +196,7 @@ class JiraComponent(ComponentBase):
 
         for i in range(0, total_worklogs, batch_size):
             batch_worklog_ids = _worklogs_u[i:i + batch_size]
-            batch_worklogs = self.client.get_worklogs(batch_worklog_ids)
+            batch_worklogs = await self.client.get_worklogs(batch_worklog_ids)
 
             worklogs_out = []
 
@@ -207,7 +207,7 @@ class JiraComponent(ComponentBase):
 
         wr.close()
 
-        worklogs_deleted = self.client.get_deleted_worklogs(self.param_since_unix)
+        worklogs_deleted = await self.client.get_deleted_worklogs(self.param_since_unix)
         wr = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.cfg.incremental)
         wr.writerows(worklogs_deleted)
         wr.close()
@@ -343,7 +343,7 @@ class JiraComponent(ComponentBase):
 
     async def get_and_write_boards_and_sprints(self):
 
-        boards = self.client.get_all_boards()
+        boards = await self.client.get_all_boards()
         _boards = [b['id'] for b in boards]
         JiraWriter(self.tables_out_path, 'boards', self.cfg.incremental).writerows(boards)
 

@@ -201,7 +201,7 @@ class JiraClient(AsyncHttpClient):
         for i in range(0, len(list_split), chunk_size):
             yield list_split[i:i + chunk_size]
 
-    def get_deleted_worklogs(self, since=None):
+    async def get_deleted_worklogs(self, since=None):
 
         url_deleted = urljoin(self.param_base_url, 'worklog/deleted')
         param_since = since
@@ -214,7 +214,7 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
-            rsp_deleted = self.get_raw(url=url_deleted, params=params_deleted)
+            rsp_deleted = await self.get_raw(endpoint=url_deleted, params=params_deleted)
 
             if rsp_deleted.status_code == 200:
                 js_worklogs = rsp_deleted.json()
@@ -263,7 +263,7 @@ class JiraClient(AsyncHttpClient):
 
         return all_worklogs
 
-    def get_worklogs(self, worklog_ids):
+    async def get_worklogs(self, worklog_ids):
 
         url_worklogs = urljoin(self.base_url, 'worklog/list')
         list_gen = self.split_list_to_chunks(worklog_ids, 1000)
@@ -271,7 +271,7 @@ class JiraClient(AsyncHttpClient):
 
         for w_list in list_gen:
 
-            rsp_worklogs = self.post_raw(url=url_worklogs, json={'ids': w_list})
+            rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json={'ids': w_list})
 
             if rsp_worklogs.status_code == 200:
                 all_worklogs += rsp_worklogs.json()
@@ -282,7 +282,7 @@ class JiraClient(AsyncHttpClient):
 
         return all_worklogs
 
-    def get_all_boards(self):
+    async def get_all_boards(self):
 
         url_boards = urljoin(self.param_agile_url, 'board')
         offset = 0
@@ -295,7 +295,7 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS_AGILE
             }
 
-            rsp_boards = self.get_raw(url=url_boards, params=params_boards)
+            rsp_boards = await self.get_raw(endpoint=url_boards, params=params_boards)
 
             if rsp_boards.status_code == 200:
                 _brd = rsp_boards.json()
@@ -376,29 +376,33 @@ class JiraClient(AsyncHttpClient):
                 'startAt': offset,
                 'maxResults': MAX_RESULTS_AGILE
             }
+            try:
+                rsp_sprints = await self.get_raw(url_sprints, params=params_sprints)
 
-            rsp_sprints = await self.get_raw(url_sprints, params=params_sprints)
+                if rsp_sprints.status_code == 200:
+                    _sprt = rsp_sprints.json()
+                    all_sprints += _sprt['values']
+                    is_complete = _sprt['isLast']
+                    offset += MAX_RESULTS_AGILE
 
-            if rsp_sprints.status_code == 200:
-                _sprt = rsp_sprints.json()
-                all_sprints += _sprt['values']
-                is_complete = _sprt['isLast']
-                offset += MAX_RESULTS_AGILE
+            except Exception as e:
 
-            elif rsp_sprints.status_code == 400 and \
-                    'The board does not support sprints' in rsp_sprints.json()['errorMessages']:
+                if e.response.status_code == 400 and \
+                        'The board does not support sprints' in e.response.json()['errorMessages']:
+                    break
+                elif e.response.status_code == 400 and \
+                        'Tabule nepodporuje sprinty' in e.response.json()['errorMessages']:
+                    break
+
+                else:
+                    raise UserException(f"Could not download sprints for board {board_id}."
+                                        f"Received: {e.response.status_code} - {e.response.text}.")
+
                 break
-            elif rsp_sprints.status_code == 400 and \
-                    'Tabule nepodporuje sprinty' in rsp_sprints.json()['errorMessages']:
-                break
-
-            else:
-                raise UserException(f"Could not download sprints for board {board_id}."
-                                    f"Received: {rsp_sprints.status_code} - {rsp_sprints.text}.")
 
         return all_sprints
 
-    def get_sprint_issues(self, sprint_id, update_date=None):
+    async def get_sprint_issues(self, sprint_id, update_date=None):
 
         url_issues = urljoin(self.param_agile_url, f'sprint/{sprint_id}/issue')
         param_jql = f'updated >= {update_date}' if update_date is not None else None
@@ -414,7 +418,7 @@ class JiraClient(AsyncHttpClient):
                 'fields': 'id,key'
             }
 
-            rsp_issues = self.get_raw(url_issues, params=params_issues)
+            rsp_issues = await self.get_raw(url_issues, params=params_issues)
 
             if rsp_issues.status_code == 200:
                 _iss = rsp_issues.json()['issues']
