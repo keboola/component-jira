@@ -128,6 +128,14 @@ class JiraComponent(ComponentBase):
         for comment in comments:
             body_text = self.merge_text_and_mentions(comment)
             update_author = comment.get("updateAuthor", {})
+            # Check if the comment has properties and parse public visibility if present
+            public_visibility = None
+            if comment.get("properties"):
+                for prop in comment["properties"]:
+                    if prop.get("key") == "sd.public.comment":
+                        public_visibility = prop.get("value", {}).get("internal")
+                        break
+
             result.append({
                 "comment_id": comment["id"],
                 "issue_id": self.get_issue_id_from_url(comment["self"]),
@@ -143,7 +151,8 @@ class JiraComponent(ComponentBase):
                 "update_author_email_address": update_author.get("emailAddress"),
                 "update_author_account_type": update_author.get("accountType"),
                 "created": comment["created"],
-                "updated": comment["updated"]
+                "updated": comment["updated"],
+                "public_visibility": public_visibility
             })
         return result
 

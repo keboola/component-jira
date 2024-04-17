@@ -45,7 +45,11 @@ class JiraClient(AsyncHttpClient):
     async def get_comments(self, issue_id: str):
         url_comments = urljoin(self.base_url, f'issue/{issue_id}/comment')
 
-        r = await self.get_raw(endpoint=url_comments)
+        params = {
+            'expand': 'properties'
+        }
+        r = await self.get_raw(endpoint=url_comments, params=params)
+
         sc, js = r.status_code, r.json()
 
         if sc == 200:
