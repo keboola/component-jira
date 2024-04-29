@@ -291,7 +291,8 @@ class JiraComponent(ComponentBase):
                     if 'customfield_' in key:
                         _custom[key] = value
                     elif key == 'description':
-                        _out['description'] = self.parse_description(issue['fields']['description']).strip('\n')
+                        _out['description'] = self.parse_description(issue['fields']['description']
+                                                                     ).strip('\n').replace("\0", "\\0")
                     else:
                         _out[key] = value
 
