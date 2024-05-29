@@ -9,6 +9,7 @@ AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
 SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
 MAX_RESULTS = 100
 MAX_RESULTS_AGILE = 50
+MAX_RESULTS_SERVICEDESK = 50
 
 
 class JiraClient(AsyncHttpClient):
@@ -195,7 +196,7 @@ class JiraClient(AsyncHttpClient):
         while is_complete is False:
             params_organizations = {
                 'start': offset,
-                'limit': MAX_RESULTS
+                'limit': MAX_RESULTS_SERVICEDESK
             }
 
             rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
@@ -204,11 +205,11 @@ class JiraClient(AsyncHttpClient):
                 _usr = rsp_organizations.json()['values']
                 all_organizations += _usr
 
-                if len(_usr) < MAX_RESULTS:
+                if len(_usr) < MAX_RESULTS_SERVICEDESK:
                     is_complete = True
 
                 else:
-                    offset += MAX_RESULTS
+                    offset += MAX_RESULTS_SERVICEDESK
 
             else:
                 raise UserException(f"Could not download organizations."
@@ -226,7 +227,7 @@ class JiraClient(AsyncHttpClient):
         while is_complete is False:
             params_servicedesks = {
                 'start': offset,
-                'limit': MAX_RESULTS
+                'limit': MAX_RESULTS_SERVICEDESK
             }
 
             rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
@@ -235,11 +236,11 @@ class JiraClient(AsyncHttpClient):
                 _usr = rsp_servicedesks.json()['values']
                 all_servicedesks += _usr
 
-                if len(_usr) < MAX_RESULTS:
+                if len(_usr) < MAX_RESULTS_SERVICEDESK:
                     is_complete = True
 
                 else:
-                    offset += MAX_RESULTS
+                    offset += MAX_RESULTS_SERVICEDESK
 
             else:
                 raise UserException(f"Could not download servicedesks."
@@ -257,7 +258,7 @@ class JiraClient(AsyncHttpClient):
         while is_complete is False:
             params_organization_users = {
                 'start': offset,
-                'limit': MAX_RESULTS
+                'limit': MAX_RESULTS_SERVICEDESK
             }
 
             rsp_users = await self.get_raw(endpoint=url_organization_users, params=params_organization_users,
@@ -267,11 +268,11 @@ class JiraClient(AsyncHttpClient):
                 _usr = rsp_users.json()['values']
                 all_users += _usr
 
-                if len(_usr) < MAX_RESULTS:
+                if len(_usr) < MAX_RESULTS_SERVICEDESK:
                     is_complete = True
 
                 else:
-                    offset += MAX_RESULTS
+                    offset += MAX_RESULTS_SERVICEDESK
 
             else:
                 raise UserException(f"Could not download users."
