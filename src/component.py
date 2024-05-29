@@ -75,6 +75,14 @@ class JiraComponent(ComponentBase):
             logging.info("Downloading worklogs.")
             tasks.append(self.get_and_write_worklogs())
 
+        if 'organizations' in self.cfg.datasets:
+            logging.info("Downloading organizations.")
+            tasks.append(self.get_and_write_organizations())
+
+        if 'servicedesks_and_customers' in self.cfg.datasets:
+            logging.info("Downloading servicedesks and customers.")
+            tasks.append(self.get_and_write_servicedesks_and_customers())
+
         if self.cfg.custom_jql:
             for custom_jql in self.cfg.custom_jql:
                 if not custom_jql.get(KEY_JQL):
@@ -198,6 +206,26 @@ class JiraComponent(ComponentBase):
         wr = JiraWriter(self.tables_out_path, 'fields', self.cfg.incremental)
         wr.writerows(fields)
         wr.close()
+
+    async def get_and_write_organizations(self):
+
+        organizations = await self.client.get_organizations()
+        wr = JiraWriter(self.tables_out_path, 'organizations', self.cfg.incremental)
+        wr.writerows(organizations)
+        wr.close()
+
+    async def get_and_write_servicedesks_and_customers(self):
+
+        organizations = await self.client.get_servicedesks()
+        wr = JiraWriter(self.tables_out_path, 'servicedesks', self.cfg.incremental)
+        wr.writerows(organizations)
+        wr.close()
+
+        for organization in organizations:
+            customers = await self.client.get_servicedesk_customers(organization['id'])
+            wr = JiraWriter(self.tables_out_path, 'servicedesk-customers', self.cfg.incremental)
+            wr.writerows(customers)
+            wr.close()
 
     async def get_and_write_worklogs(self, batch_size=1000):
         _worklogs_u = [w['worklogId'] for w in await self.client.get_updated_worklogs(self.param_since_unix)]

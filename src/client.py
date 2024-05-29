@@ -6,6 +6,7 @@ from keboola.http_client.async_client import AsyncHttpClient
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
+SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
 MAX_RESULTS = 100
 MAX_RESULTS_AGILE = 50
 
@@ -16,6 +17,7 @@ class JiraClient(AsyncHttpClient):
 
         self.param_base_url = BASE_URL.format(organization_id)
         self.param_agile_url = AGILE_URL.format(organization_id)
+        self.param_servicedesk_url = SERVICEDESK_URL.format(organization_id)
         self.param_username = username
         self.param_api_token = api_token
 
@@ -169,6 +171,100 @@ class JiraClient(AsyncHttpClient):
 
             if rsp_users.status_code == 200:
                 _usr = rsp_users.json()
+                all_users += _usr
+
+                if len(_usr) < MAX_RESULTS:
+                    is_complete = True
+
+                else:
+                    offset += MAX_RESULTS
+
+            else:
+                raise UserException(f"Could not download users."
+                                    f"Received: {rsp_users.status_code} - {rsp_users.text}.")
+
+        return all_users
+
+    async def get_organizations(self):
+
+        url_organizations = urljoin(self.param_servicedesk_url, 'organization')
+        offset = 0
+        all_organizations = []
+        is_complete = False
+
+        while is_complete is False:
+            params_organizations = {
+                'start': offset,
+                'limit': MAX_RESULTS
+            }
+
+            rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
+
+            if rsp_organizations.status_code == 200:
+                _usr = rsp_organizations.json()['values']
+                all_organizations += _usr
+
+                if len(_usr) < MAX_RESULTS:
+                    is_complete = True
+
+                else:
+                    offset += MAX_RESULTS
+
+            else:
+                raise UserException(f"Could not download organizations."
+                                    f"Received: {rsp_organizations.status_code} - {rsp_organizations.text}.")
+
+        return all_organizations
+
+    async def get_servicedesks(self):
+
+        url_organizations = urljoin(self.param_servicedesk_url, 'servicedesk')
+        offset = 0
+        all_servicedesks = []
+        is_complete = False
+
+        while is_complete is False:
+            params_servicedesks = {
+                'start': offset,
+                'limit': MAX_RESULTS
+            }
+
+            rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
+
+            if rsp_servicedesks.status_code == 200:
+                _usr = rsp_servicedesks.json()['values']
+                all_servicedesks += _usr
+
+                if len(_usr) < MAX_RESULTS:
+                    is_complete = True
+
+                else:
+                    offset += MAX_RESULTS
+
+            else:
+                raise UserException(f"Could not download servicedesks."
+                                    f"Received: {rsp_servicedesks.status_code} - {rsp_servicedesks.text}.")
+
+        return all_servicedesks
+
+    async def get_servicedesk_customers(self, servicedesk_id: str):
+
+        url_organization_users = urljoin(self.param_servicedesk_url, f'servicedesk/{servicedesk_id}/customer')
+        offset = 0
+        all_users = []
+        is_complete = False
+
+        while is_complete is False:
+            params_organization_users = {
+                'start': offset,
+                'limit': MAX_RESULTS
+            }
+
+            rsp_users = await self.get_raw(endpoint=url_organization_users, params=params_organization_users,
+                                           headers={"X-ExperimentalApi": "opt-in"})
+
+            if rsp_users.status_code == 200:
+                _usr = rsp_users.json()['values']
                 all_users += _usr
 
                 if len(_usr) < MAX_RESULTS:

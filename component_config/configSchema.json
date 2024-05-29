@@ -61,7 +61,9 @@
             "Issues Changelogs",
             "Worklogs",
             "Boards & Sprints",
-            "Issues Comments"
+            "Issues Comments",
+            "Organizations",
+            "Servicedesks & Customers (experimental endpoint)"
           ]
         },
         "enum": [
@@ -69,7 +71,9 @@
           "issues_changelogs",
           "worklogs",
           "boards_n_sprints",
-          "comments"
+          "comments",
+          "organizations",
+          "servicedesks_and_customers"
         ],
         "type": "string"
       },
