@@ -94,6 +94,21 @@ FIELDS_R_COMMENTS = ["comment_id", "issue_id", "account_id", "email_address", "d
 PK_COMMENTS = ["comment_id"]
 JSON_COMMENTS = []
 
+FIELDS_ORGANIZATIONS = ['id', 'name', 'created_jira', '_links_self']
+JSON_ORGANIZATIONS = []
+PK_ORGANIZATIONS = ['id']
+FIELDS_R_ORGANIZATIONS = ['id', 'name', 'created', 'links']
+
+FIELDS_SERVICEDESKS = ['id', 'projectId', 'projectName', 'projectKey', '_links_self']
+JSON_SERVICEDESKS = []
+PK_SERVICEDESKS = ['id']
+FIELDS_R_SERVICEDESKS = ['id', 'projectId', 'projectName', 'projectKey', '_links']
+
+FIELDS_SERVICEDESK_CUSTOMERS = ['accountId', 'emailAddress', 'displayName', 'active', 'timeZone', '_links_self']
+JSON_SERVICEDESK_CUSTOMERS = []
+PK_SERVICEDESK_CUSTOMERS = ['accountId']
+FIELDS_R_SERVICEDESK_CUSTOMERS = ['accountId', 'emailAddress', 'displayName', 'active', 'timeZone', '_links']
+
 
 class JiraWriter:
 
