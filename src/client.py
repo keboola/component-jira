@@ -1,4 +1,6 @@
 import logging
+import backoff
+import httpx
 from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
@@ -333,6 +335,7 @@ class JiraClient(AsyncHttpClient):
 
         return all_worklogs
 
+    @backoff.on_exception(backoff.expo, httpx.HTTPStatusError, max_tries=5)
     async def get_updated_worklogs(self, since=None):
 
         url_updated = urljoin(self.param_base_url, 'worklog/updated')
