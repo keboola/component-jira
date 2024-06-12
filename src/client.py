@@ -349,7 +349,7 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
-            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
+            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated, timeout=200)
 
             if rsp_updated.status_code == 200:
                 js_worklogs = rsp_updated.json()
