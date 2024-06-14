@@ -5,7 +5,6 @@ from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
 
-
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
 SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
@@ -349,7 +348,8 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
-            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated, timeout=200)
+            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated,
+                                             timeout=httpx.Timeout(connect=10000, read=10000, write=10000, pool=10000))
 
             if rsp_updated.status_code == 200:
                 js_worklogs = rsp_updated.json()
