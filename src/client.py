@@ -1,6 +1,4 @@
 import logging
-import backoff
-import httpx
 from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
@@ -27,7 +25,8 @@ class JiraClient(AsyncHttpClient):
                          default_headers={
                              'accept': 'application/json',
                              'content-type': 'application/json'
-                         })
+                         },
+                         timeout=60)
 
     async def get_projects(self):
 
@@ -334,7 +333,6 @@ class JiraClient(AsyncHttpClient):
 
         return all_worklogs
 
-    @backoff.on_exception(backoff.expo, httpx.HTTPStatusError, max_tries=5)
     async def get_updated_worklogs(self, since=None):
 
         url_updated = urljoin(self.param_base_url, 'worklog/updated')
@@ -348,8 +346,7 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
-            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated,
-                                             timeout=httpx.Timeout(connect=10000, read=10000, write=10000, pool=10000))
+            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
 
             if rsp_updated.status_code == 200:
                 js_worklogs = rsp_updated.json()
