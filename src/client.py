@@ -3,6 +3,7 @@ from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
 
+
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
 SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
@@ -25,8 +26,7 @@ class JiraClient(AsyncHttpClient):
                          default_headers={
                              'accept': 'application/json',
                              'content-type': 'application/json'
-                         },
-                         timeout=60)
+                         })
 
     async def get_projects(self):
 
