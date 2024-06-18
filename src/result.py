@@ -1,6 +1,9 @@
 import csv
 import json
 import os
+import sys
+
+csv.field_size_limit(sys.maxsize)  # to prevent _csv.Error: field larger than field limit
 
 FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issuetype_name', 'timespent', 'project_key',
                  'fixVersions', 'aggregatetimespent', 'resolution', 'resolutiondate', 'resolution_id',
