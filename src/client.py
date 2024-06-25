@@ -7,7 +7,7 @@ from keboola.http_client.async_client import AsyncHttpClient
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
 SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
-MAX_RESULTS = 100
+MAX_RESULTS = 500
 MAX_RESULTS_AGILE = 50
 MAX_RESULTS_SERVICEDESK = 50
 
