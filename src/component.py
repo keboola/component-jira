@@ -303,7 +303,8 @@ class JiraComponent(ComponentBase):
 
         while is_complete is False:
 
-            issues, is_complete, offset = await self.client.get_issues(self.param_since_date, offset=offset)
+            issues, is_complete, offset = await self.client.get_issues(self.param_since_date, offset=offset,
+                                                                       issue_jql_filter=self.cfg.issue_jql_filter)
             issues_f = []
 
             for issue in issues:
