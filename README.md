@@ -31,6 +31,7 @@ All parameters, except parameter for load type, are required.
     - **type:** required
     - **configuration name:** `datasets`
     - **note:** If you'd like to download `issues_changelogs` or `comments` dataset, **`issues` must be selected as well.**
+    - **advanced filter:** The component has a hidden(not in UI) feature where you can add an Issue filter in JQL. The "issue_jql_filter" parameter can be used in the RAW configuration, overriding the Data range parameter.**
     - **description:** An array of objects, which will be downloaded.
     - **possible values:** `issues`, `issues_changelogs`, `worklogs`, `boards_n_sprints`, `comments`
 - **Load Type**
