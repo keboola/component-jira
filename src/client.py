@@ -3,7 +3,6 @@ from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
 
-
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
 SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
@@ -92,10 +91,13 @@ class JiraClient(AsyncHttpClient):
 
         return all_changelogs
 
-    async def get_issues(self, update_date=None, offset=0):
+    async def get_issues(self, update_date=None, offset=0, issue_jql_filter=None):
 
         url_issues = urljoin(self.param_base_url, 'search')
-        param_jql = f'updated >= {update_date}' if update_date is not None else None
+        if issue_jql_filter is not None:
+            param_jql = issue_jql_filter
+        else:
+            param_jql = f'updated >= {update_date}' if update_date is not None else None
         is_complete = False
 
         params_issues = {
@@ -121,39 +123,6 @@ class JiraClient(AsyncHttpClient):
         else:
             raise UserException(f"Could not download issues."
                                 f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
-
-    def get_issues_gen(self, update_date=None):
-        url_issues = urljoin(self.param_base_url, 'search')
-        param_jql = f'updated >= {update_date}' if update_date is not None else None
-        offset = 0
-
-        while True:
-            params_issues = {
-                'startAt': offset,
-                'jql': param_jql,
-                'maxResults': MAX_RESULTS,
-                'expand': 'changelog'
-            }
-
-            rsp_issues = self.get_raw(url=url_issues, params=params_issues)
-
-            if rsp_issues.status_code == 200:
-                issues = rsp_issues.json()['issues']
-
-                if not issues:
-                    break  # No more issues to fetch
-
-                for issue in issues:
-                    yield issue
-
-                if len(issues) < MAX_RESULTS:
-                    break  # We've reached the end of the issues
-
-                offset += MAX_RESULTS  # Prepare for the next batch of issues
-
-            else:
-                raise UserException(f"Could not download issues."
-                                    f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
     async def get_users(self):
 

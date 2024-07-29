@@ -52,6 +52,7 @@ class Configuration(ConfigurationBase):
     datasets: List[str] = field(default_factory=list)
     username: str = ""
     custom_jql: List[Dict[str, str]] = field(default_factory=list)
+    issue_jql_filter: str = None
     incremental: int = 1
     organization_id: str = ""
     organization_url: str = ""
