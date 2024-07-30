@@ -103,15 +103,18 @@ class JiraComponent(ComponentBase):
 
     @staticmethod
     def merge_text_and_mentions(data):
-        content_list = data["body"]["content"]
         merged_string = ""
+
+        content_list = data.get("body", {}).get("content", [])
+
         for content in content_list:
-            if content["type"] == "paragraph":
-                for c in content["content"]:
-                    if c["type"] == "text":
-                        merged_string += c["text"]
-                    elif c["type"] == "mention":
-                        merged_string += c["attrs"]["text"]
+            if content.get("type") == "paragraph":
+                for c in content.get("content", []):
+                    if c.get("type") == "text":
+                        merged_string += c.get("text", "")
+                    elif c.get("type") == "mention":
+                        merged_string += c.get("attrs", {}).get("text", "")
+
         return merged_string
 
     @staticmethod
