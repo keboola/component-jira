@@ -94,10 +94,11 @@ class JiraClient(AsyncHttpClient):
     async def get_issues(self, update_date=None, offset=0, issue_jql_filter=None):
 
         url_issues = urljoin(self.param_base_url, 'search')
-        if issue_jql_filter is not None:
+        if issue_jql_filter:
             param_jql = issue_jql_filter
         else:
-            param_jql = f'updated >= {update_date}' if update_date is not None else None
+            param_jql = f'updated >= {update_date}' if update_date else None
+
         is_complete = False
 
         params_issues = {
