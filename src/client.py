@@ -2,6 +2,7 @@ import logging
 from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
+import httpx
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
@@ -50,17 +51,20 @@ class JiraClient(AsyncHttpClient):
         params = {
             'expand': 'properties'
         }
-        r = await self.get_raw(endpoint=url_comments, params=params)
 
-        sc, js = r.status_code, r.json()
+        try:
+            r = await self.get_raw(endpoint=url_comments, params=params)
+            sc, js = r.status_code, r.json()
 
-        if sc == 200:
-            comments = js['comments']
+            if sc == 200:
+                comments = js['comments']
+            else:
+                logging.error(f"Could not download comments for issue {issue_id}. {sc} - {js}")
+                comments = {}
 
-        else:
-            logging.error(f"Could not download comments for issue {issue_id}.")
-            logging.error(f"Received: {sc} - {js}.")
-            return {}
+        except httpx.HTTPStatusError as e:
+            logging.error(f"Could not download comments for issue {issue_id}. - {e.response.text}")
+            comments = {}
 
         return comments
 
