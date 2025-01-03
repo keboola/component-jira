@@ -13,7 +13,8 @@ FIELDS_ISSUES = ['id', 'key', 'statuscategorychangedate', 'issuetype_id', 'issue
                  'timeoriginalestimate', 'security', 'aggregatetimeestimate', 'summary', 'description',
                  'creator_accountId', 'creator_emailAddress', 'creator_displayName', 'parent_id', 'subtasks',
                  'reporter_accountId', 'reporter_displayName', 'aggregateprogress_progress', 'aggregateprogress_total',
-                 'environment', 'duedate', 'progress_progress', 'progress_total', 'custom_fields', 'issuelinks']
+                 'environment', 'duedate', 'progress_progress', 'progress_total', 'custom_fields', 'issuelinks',
+                 'versions']
 FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 'issue_type_name', 'time_spent',
                    'project_key', 'fix_versions', 'aggregate_time_spent', 'resolution', 'resolution_date',
                    'resolution_id', 'resolution_name', 'resolution_description', 'work_ratio',
@@ -23,9 +24,9 @@ FIELDS_R_ISSUES = ['id', 'key', 'status_category_change_date', 'issue_type_id', 
                    'aggregate_time_estimate', 'summary', 'description', 'creator_account_id', 'creator_email_address',
                    'creator_display_name', 'parent_id', 'subtasks', 'reporter_account_id', 'reporter_display_name',
                    'aggregate_progress', 'aggregate_progress_total', 'environment', 'due_date', 'progress',
-                   'progress_total', 'custom_fields', 'issuelinks']
+                   'progress_total', 'custom_fields', 'issuelinks', 'versions']
 PK_ISSUES = ['id']
-JSON_ISSUES = ['fixVersions', 'components', 'subtasks', 'custom_fields', 'issuelinks']
+JSON_ISSUES = ['fixVersions', 'components', 'subtasks', 'custom_fields', 'issuelinks', 'versions']
 
 FIELDS_USERS = ['accountId', 'displayName', 'active', 'accountType', 'emailAddress', 'locale']
 FIELDS_R_USERS = ['account_id', 'display_name', 'active', 'account_type', 'email_address', 'locale']
