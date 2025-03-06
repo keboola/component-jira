@@ -47,52 +47,60 @@ class JiraComponent(ComponentBase):
     async def run_async(self):
 
         tasks = []
+        try:
+            logging.info("Downloading projects.")
+            tasks.append(self.get_and_write_projects())
 
-        logging.info("Downloading projects.")
-        tasks.append(self.get_and_write_projects())
+            logging.info("Downloading a list of fields.")
+            tasks.append(self.get_and_write_fields())
 
-        logging.info("Downloading a list of fields.")
-        tasks.append(self.get_and_write_fields())
+            logging.info("Downloading users.")
+            tasks.append(self.get_and_write_users())
 
-        logging.info("Downloading users.")
-        tasks.append(self.get_and_write_users())
+            self.check_issues_param()
 
-        self.check_issues_param()
+            if 'issues' in self.cfg.datasets:
+                logging.info("Downloading issues.")
+                await self.get_and_write_issues()
 
-        if 'issues' in self.cfg.datasets:
-            logging.info("Downloading issues.")
-            await self.get_and_write_issues()
+                if 'comments' in self.cfg.datasets:
+                    logging.info("Downloading comments")
+                    tasks.append(self.get_and_write_comments())
 
-            if 'comments' in self.cfg.datasets:
-                logging.info("Downloading comments")
-                tasks.append(self.get_and_write_comments())
+            if 'boards_n_sprints' in self.cfg.datasets:
+                logging.info("Downloading boards and sprints.")
+                tasks.append(self.get_and_write_boards_and_sprints())
 
-        if 'boards_n_sprints' in self.cfg.datasets:
-            logging.info("Downloading boards and sprints.")
-            tasks.append(self.get_and_write_boards_and_sprints())
+            if 'worklogs' in self.cfg.datasets:
+                logging.info("Downloading worklogs.")
+                tasks.append(self.get_and_write_worklogs())
 
-        if 'worklogs' in self.cfg.datasets:
-            logging.info("Downloading worklogs.")
-            tasks.append(self.get_and_write_worklogs())
+            if 'organizations' in self.cfg.datasets:
+                logging.info("Downloading organizations.")
+                tasks.append(self.get_and_write_organizations())
 
-        if 'organizations' in self.cfg.datasets:
-            logging.info("Downloading organizations.")
-            tasks.append(self.get_and_write_organizations())
+            if 'servicedesks_and_customers' in self.cfg.datasets:
+                logging.info("Downloading servicedesks and customers.")
+                tasks.append(self.get_and_write_servicedesks_and_customers())
 
-        if 'servicedesks_and_customers' in self.cfg.datasets:
-            logging.info("Downloading servicedesks and customers.")
-            tasks.append(self.get_and_write_servicedesks_and_customers())
+            if self.cfg.custom_jql:
+                for custom_jql in self.cfg.custom_jql:
+                    if not custom_jql.get(KEY_JQL):
+                        raise UserException("Custom JQL error: JQL is empty, must be filled in")
+                    if not custom_jql.get(KEY_TABLE_NAME):
+                        raise UserException("Custom JQL error: table name is empty, must be filled in")
+                    logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
+                    tasks.append(self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME)))
 
-        if self.cfg.custom_jql:
-            for custom_jql in self.cfg.custom_jql:
-                if not custom_jql.get(KEY_JQL):
-                    raise UserException("Custom JQL error: JQL is empty, must be filled in")
-                if not custom_jql.get(KEY_TABLE_NAME):
-                    raise UserException("Custom JQL error: table name is empty, must be filled in")
-                logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
-                tasks.append(self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME)))
+            await asyncio.gather(*tasks)
 
-        await asyncio.gather(*tasks)
+        except Exception as e:
+            raise UserException(f"Error during downloading data: {str(e)}")
+
+        finally:
+            for task in tasks:
+                if asyncio.iscoroutine(task):
+                    task.close()
 
     def check_issues_param(self):
         if 'issues' not in self.cfg.datasets:
