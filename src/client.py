@@ -32,6 +32,7 @@ class JiraClient(AsyncHttpClient):
 
         url_projects = urljoin(self.base_url, 'project')
         par_projects = {'expand': 'description'}
+        logging.info(f"Calling Jira API for projects. URL: {url_projects} Params: {par_projects}")
         rsp_projects = await self.get_raw(endpoint=url_projects, params=par_projects)
 
         if rsp_projects.status_code == 200:
@@ -53,6 +54,7 @@ class JiraClient(AsyncHttpClient):
         }
 
         try:
+            logging.info(f"Calling Jira API for comments. URL: {url_comments} Params: {params}")
             r = await self.get_raw(endpoint=url_comments, params=params)
             sc, js = r.status_code, r.json()
 
@@ -81,6 +83,7 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS
             }
 
+            logging.info(f"Calling Jira API for changelogs. URL: {url_changelogs} Params: {params_changelogs}")
             rsp_changelogs = await self.get_raw(endpoint=url_changelogs, params=params_changelogs)
             sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
 
@@ -112,6 +115,7 @@ class JiraClient(AsyncHttpClient):
             'expand': 'changelog'
         }
 
+        logging.info(f"Calling Jira API for issues. URL: {url_issues} Params: {params_issues}")
         rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
         if rsp_issues.status_code == 200:
@@ -142,6 +146,7 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS
             }
 
+            logging.info(f"Calling Jira API for users. URL: {url_users} Params: {params_users}")
             rsp_users = await self.get_raw(endpoint=url_users, params=params_users)
 
             if rsp_users.status_code == 200:
@@ -173,6 +178,7 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
+            logging.info(f"Calling Jira API for organizations. URL: {url_organizations} Params: {params_organizations}")
             rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
 
             if rsp_organizations.status_code == 200:
@@ -204,6 +210,7 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
+            logging.info(f"Calling Jira API for servicedesks. URL: {url_organizations} Params: {params_servicedesks}")
             rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
 
             if rsp_servicedesks.status_code == 200:
@@ -235,6 +242,8 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
+            logging.info(f"Calling Jira API for servicedesk customers. URL: {url_organization_users}"
+                         f"Params: {params_organization_users}")
             rsp_users = await self.get_raw(endpoint=url_organization_users, params=params_organization_users,
                                            headers={"X-ExperimentalApi": "opt-in"})
 
@@ -261,6 +270,7 @@ class JiraClient(AsyncHttpClient):
             'expand': 'projects.issuetypes.fields'
         }
 
+        logging.info(f"Calling Jira API for fields. URL: {url_fields} Params: {params_fields}")
         rsp_fields = await self.get_raw(endpoint=url_fields, params=params_fields)
 
         if rsp_fields.status_code == 200:
@@ -289,6 +299,7 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
+            logging.info(f"Calling Jira API for deleted worklogs. URL: {url_deleted} Params: {params_deleted}")
             rsp_deleted = await self.get_raw(endpoint=url_deleted, params=params_deleted)
 
             if rsp_deleted.status_code == 200:
@@ -320,6 +331,7 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
+            logging.info(f"Calling Jira API for updated worklogs. URL: {url_updated} Params: {params_updated}")
             rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
 
             if rsp_updated.status_code == 200:
@@ -346,6 +358,7 @@ class JiraClient(AsyncHttpClient):
 
         for w_list in list_gen:
 
+            logging.info(f"Calling Jira API for worklogs. URL: {url_worklogs} Params: {w_list}")
             rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json={'ids': w_list})
 
             if rsp_worklogs.status_code == 200:
@@ -370,6 +383,7 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS_AGILE
             }
 
+            logging.info(f"Calling Jira API for boards. URL: {url_boards} Params: {params_boards}")
             rsp_boards = await self.get_raw(endpoint=url_boards, params=params_boards)
 
             if rsp_boards.status_code == 200:
@@ -397,6 +411,7 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS_AGILE
             }
 
+            logging.info(f"Calling Jira API for boards. URL: {url_boards} Params: {params_boards}")
             rsp_boards = self.get_raw(url=url_boards, params=params_boards)
 
             if rsp_boards.status_code == 200:
@@ -422,6 +437,7 @@ class JiraClient(AsyncHttpClient):
             'expand': 'changelog'
         }
 
+        logging.info(f"Calling Jira API for custom JQL. URL: {url_issues} Params: {params_issues}")
         rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
         if rsp_issues.status_code == 200:
@@ -452,6 +468,7 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS_AGILE
             }
             try:
+                logging.info(f"Calling Jira API for sprints. URL: {url_sprints} Params: {params_sprints}")
                 rsp_sprints = await self.get_raw(url_sprints, params=params_sprints)
 
                 if rsp_sprints.status_code == 200:
@@ -493,6 +510,7 @@ class JiraClient(AsyncHttpClient):
                 'fields': 'id,key'
             }
 
+            logging.info(f"Calling Jira API for issues. URL: {url_issues} Params: {params_issues}")
             rsp_issues = await self.get_raw(url_issues, params=params_issues)
 
             if rsp_issues.status_code == 200:
