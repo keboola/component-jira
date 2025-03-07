@@ -47,60 +47,43 @@ class JiraComponent(ComponentBase):
     async def run_async(self):
 
         tasks = []
-        try:
-            logging.info("Downloading projects.")
-            tasks.append(self.get_and_write_projects())
+        tasks.append(asyncio.create_task(self.get_and_write_projects()))
+        tasks.append(asyncio.create_task(self.get_and_write_fields()))
+        tasks.append(asyncio.create_task(self.get_and_write_users()))
 
-            logging.info("Downloading a list of fields.")
-            tasks.append(self.get_and_write_fields())
+        self.check_issues_param()
 
-            logging.info("Downloading users.")
-            tasks.append(self.get_and_write_users())
+        if 'issues' in self.cfg.datasets:
+            await self.get_and_write_issues()
 
-            self.check_issues_param()
+            if 'comments' in self.cfg.datasets:
+                tasks.append(asyncio.create_task(self.get_and_write_comments()))
 
-            if 'issues' in self.cfg.datasets:
-                logging.info("Downloading issues.")
-                await self.get_and_write_issues()
+        if 'boards_n_sprints' in self.cfg.datasets:
+            tasks.append(asyncio.create_task(self.get_and_write_boards_and_sprints()))
 
-                if 'comments' in self.cfg.datasets:
-                    logging.info("Downloading comments")
-                    tasks.append(self.get_and_write_comments())
+        if 'worklogs' in self.cfg.datasets:
+            tasks.append(asyncio.create_task(self.get_and_write_worklogs()))
 
-            if 'boards_n_sprints' in self.cfg.datasets:
-                logging.info("Downloading boards and sprints.")
-                tasks.append(self.get_and_write_boards_and_sprints())
+        if 'organizations' in self.cfg.datasets:
+            tasks.append(asyncio.create_task(self.get_and_write_organizations()))
 
-            if 'worklogs' in self.cfg.datasets:
-                logging.info("Downloading worklogs.")
-                tasks.append(self.get_and_write_worklogs())
+        if 'servicedesks_and_customers' in self.cfg.datasets:
+            tasks.append(asyncio.create_task(self.get_and_write_servicedesks_and_customers()))
 
-            if 'organizations' in self.cfg.datasets:
-                logging.info("Downloading organizations.")
-                tasks.append(self.get_and_write_organizations())
+        if self.cfg.custom_jql:
+            for custom_jql in self.cfg.custom_jql:
+                if not custom_jql.get(KEY_JQL):
+                    raise UserException("Custom JQL error: JQL is empty, must be filled in")
+                if not custom_jql.get(KEY_TABLE_NAME):
+                    raise UserException("Custom JQL error: table name is empty, must be filled in")
+                tasks.append(
+                    asyncio.create_task(
+                        self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+                    )
+                )
 
-            if 'servicedesks_and_customers' in self.cfg.datasets:
-                logging.info("Downloading servicedesks and customers.")
-                tasks.append(self.get_and_write_servicedesks_and_customers())
-
-            if self.cfg.custom_jql:
-                for custom_jql in self.cfg.custom_jql:
-                    if not custom_jql.get(KEY_JQL):
-                        raise UserException("Custom JQL error: JQL is empty, must be filled in")
-                    if not custom_jql.get(KEY_TABLE_NAME):
-                        raise UserException("Custom JQL error: table name is empty, must be filled in")
-                    logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
-                    tasks.append(self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME)))
-
-            await asyncio.gather(*tasks)
-
-        except Exception as e:
-            raise UserException(f"Error during downloading data: {str(e)}")
-
-        finally:
-            for task in tasks:
-                if asyncio.iscoroutine(task):
-                    task.close()
+        await asyncio.gather(*tasks)
 
     def check_issues_param(self):
         if 'issues' not in self.cfg.datasets:
@@ -176,7 +159,7 @@ class JiraComponent(ComponentBase):
         return result
 
     async def get_and_write_comments(self):
-
+        logging.info("Downloading comments")
         load_table_name = os.path.join(self.tables_out_path, 'issues.csv')
         issue_id_col_name = 'id'
 
@@ -199,6 +182,7 @@ class JiraComponent(ComponentBase):
         self.write_manifest(table)
 
     async def get_and_write_projects(self):
+        logging.info("Downloading projects.")
         projects = await self.client.get_projects()
         wr = JiraWriter(self.tables_out_path, 'projects', self.cfg.incremental)
         wr.writerows(projects)
@@ -212,21 +196,21 @@ class JiraComponent(ComponentBase):
         wr.close()
 
     async def get_and_write_fields(self):
-
+        logging.info("Downloading a list of fields.")
         fields = await self.client.get_fields()
         wr = JiraWriter(self.tables_out_path, 'fields', self.cfg.incremental)
         wr.writerows(fields)
         wr.close()
 
     async def get_and_write_organizations(self):
-
+        logging.info("Downloading organizations.")
         organizations = await self.client.get_organizations()
         wr = JiraWriter(self.tables_out_path, 'organizations', self.cfg.incremental)
         wr.writerows(organizations)
         wr.close()
 
     async def get_and_write_servicedesks_and_customers(self):
-
+        logging.info("Downloading servicedesks and customers.")
         organizations = await self.client.get_servicedesks()
         wr = JiraWriter(self.tables_out_path, 'servicedesks', self.cfg.incremental)
         wr.writerows(organizations)
@@ -239,6 +223,7 @@ class JiraComponent(ComponentBase):
             wr.close()
 
     async def get_and_write_worklogs(self, batch_size=1000):
+        logging.info("Downloading worklogs.")
         _worklogs_u = [w['worklogId'] for w in await self.client.get_updated_worklogs(self.param_since_unix)]
         total_worklogs = len(_worklogs_u)
 
@@ -302,6 +287,7 @@ class JiraComponent(ComponentBase):
         return text
 
     async def get_and_write_issues(self):
+        logging.info("Downloading issues.")
         offset = 0
         is_complete = False
         download_further_changelogs = []
@@ -394,7 +380,7 @@ class JiraComponent(ComponentBase):
             writer_changelogs.close()
 
     async def get_and_write_boards_and_sprints(self):
-
+        logging.info("Downloading boards and sprints.")
         boards = await self.client.get_all_boards()
         _boards = [b['id'] for b in boards]
         JiraWriter(self.tables_out_path, 'boards', self.cfg.incremental).writerows(boards)
@@ -417,6 +403,7 @@ class JiraComponent(ComponentBase):
         issues_writer.close()
 
     async def get_and_write_custom_jql(self, jql, table_name):
+        logging.info(f"Downloading custom JQL : {jql}")
         offset = 0
         is_complete = False
         writer_issues = JiraWriter(self.tables_out_path, 'issues', self.cfg.incremental, custom_name=table_name)
