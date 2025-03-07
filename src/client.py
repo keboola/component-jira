@@ -85,7 +85,7 @@ class JiraClient(AsyncHttpClient):
         while is_complete is False:
             params_changelogs = {
                 'startAt': offset,
-                'maxResults': MAX_RESULTS
+                'maxResults': MAX_RESULTS_AGILE
             }
 
             logging.info(f"Calling Jira API for changelogs. URL: {url_changelogs} Params: {params_changelogs}")
@@ -130,7 +130,7 @@ class JiraClient(AsyncHttpClient):
                 is_complete = True
 
             else:
-                offset += MAX_RESULTS
+                offset += MAX_RESULTS_AGILE
 
             return issues, is_complete, offset
 
