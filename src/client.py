@@ -22,11 +22,16 @@ class JiraClient(AsyncHttpClient):
         self.param_username = username
         self.param_api_token = api_token
 
-        super().__init__(self.param_base_url, auth=(self.param_username, self.param_api_token), retries=5,
-                         default_headers={
-                             'accept': 'application/json',
-                             'content-type': 'application/json'
-                         })
+        super().__init__(
+                    self.param_base_url,
+                    auth=(self.param_username, self.param_api_token),
+                    retries=5,
+                    timeout=300.0,
+                    default_headers={
+                       'accept': 'application/json',
+                       'content-type': 'application/json'
+                    }
+                )
 
     async def get_projects(self):
 
