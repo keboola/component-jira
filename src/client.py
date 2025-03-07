@@ -116,8 +116,7 @@ class JiraClient(AsyncHttpClient):
         params_issues = {
             'startAt': offset,
             'jql': param_jql,
-            'maxResults': MAX_RESULTS_AGILE,
-            'expand': 'changelog'
+            'maxResults': MAX_RESULTS_AGILE
         }
 
         logging.info(f"Calling Jira API for issues. URL: {url_issues} Params: {params_issues}")
