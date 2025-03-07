@@ -94,7 +94,7 @@ class JiraClient(AsyncHttpClient):
 
             if sc_changelogs == 200:
                 all_changelogs += js_changelogs['values']
-                offset += MAX_RESULTS
+                offset += MAX_RESULTS_AGILE
                 is_complete = js_changelogs['isLast']
 
             else:
@@ -116,7 +116,7 @@ class JiraClient(AsyncHttpClient):
         params_issues = {
             'startAt': offset,
             'jql': param_jql,
-            'maxResults': MAX_RESULTS,
+            'maxResults': MAX_RESULTS_AGILE,
             'expand': 'changelog'
         }
 
@@ -126,7 +126,7 @@ class JiraClient(AsyncHttpClient):
         if rsp_issues.status_code == 200:
             issues = rsp_issues.json()['issues']
 
-            if len(issues) < MAX_RESULTS:
+            if len(issues) < MAX_RESULTS_AGILE:
                 is_complete = True
 
             else:
