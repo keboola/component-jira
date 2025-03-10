@@ -32,18 +32,23 @@ class JiraClient(AsyncHttpClient):
 
         url_projects = urljoin(self.base_url, 'project')
         par_projects = {'expand': 'description'}
-        rsp_projects = await self.get_raw(endpoint=url_projects, params=par_projects)
 
-        if rsp_projects.status_code == 200:
-            return rsp_projects.json()
+        try:
+            rsp_projects = await self.get_raw(endpoint=url_projects, params=par_projects)
 
-        elif rsp_projects.status_code == 403 and \
-                'Basic auth with password is not allowed on this instance' in rsp_projects.text:
-            raise UserException("Could not authenticate against the API. Please, check the API token.")
+            if rsp_projects.status_code == 200:
+                return rsp_projects.json()
+            else:
+                raise UserException(f"Unable to get projects from {self.param_base_url}. "
+                                    f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
 
-        else:
-            raise UserException(f"Unable to authenticate against {self.param_base_url}."
-                                f"Received: {rsp_projects.status_code} - {rsp_projects.text}.")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403 and 'Basic auth with password is not allowed' in e.response.text:
+                raise UserException("Could not authenticate against the API. Please, check the API token.")
+
+            else:
+                raise UserException(f"Unable to get projects from {self.param_base_url}. "
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
     async def get_comments(self, issue_id: str):
         url_comments = urljoin(self.base_url, f'issue/{issue_id}/comment')
@@ -81,17 +86,22 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS
             }
 
-            rsp_changelogs = await self.get_raw(endpoint=url_changelogs, params=params_changelogs)
-            sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
+            try:
+                rsp_changelogs = await self.get_raw(endpoint=url_changelogs, params=params_changelogs)
+                sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
 
-            if sc_changelogs == 200:
-                all_changelogs += js_changelogs['values']
-                offset += MAX_RESULTS
-                is_complete = js_changelogs['isLast']
+                if sc_changelogs == 200:
+                    all_changelogs += js_changelogs['values']
+                    offset += MAX_RESULTS
+                    is_complete = js_changelogs['isLast']
 
-            else:
+                else:
+                    raise UserException(f"Could not download changelogs for issue {issue_key}."
+                                        f"Received: {sc_changelogs} - {js_changelogs}.")
+
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download changelogs for issue {issue_key}."
-                                    f"Received: {sc_changelogs} - {js_changelogs}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_changelogs
 
@@ -112,22 +122,27 @@ class JiraClient(AsyncHttpClient):
             'expand': 'changelog'
         }
 
-        rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+        try:
+            rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
-        if rsp_issues.status_code == 200:
-            issues = rsp_issues.json()['issues']
+            if rsp_issues.status_code == 200:
+                issues = rsp_issues.json()['issues']
 
-            if len(issues) < MAX_RESULTS:
-                is_complete = True
+                if len(issues) < MAX_RESULTS:
+                    is_complete = True
+
+                else:
+                    offset += MAX_RESULTS
+
+                return issues, is_complete, offset
 
             else:
-                offset += MAX_RESULTS
+                raise UserException(f"Could not download issues."
+                                    f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
-            return issues, is_complete, offset
-
-        else:
+        except httpx.HTTPStatusError as e:
             raise UserException(f"Could not download issues."
-                                f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
+                                f"Received: {e.response.status_code} - {e.response.text}.")
 
     async def get_users(self):
 
@@ -142,21 +157,26 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS
             }
 
-            rsp_users = await self.get_raw(endpoint=url_users, params=params_users)
+            try:
+                rsp_users = await self.get_raw(endpoint=url_users, params=params_users)
 
-            if rsp_users.status_code == 200:
-                _usr = rsp_users.json()
-                all_users += _usr
+                if rsp_users.status_code == 200:
+                    _usr = rsp_users.json()
+                    all_users += _usr
 
-                if len(_usr) < MAX_RESULTS:
-                    is_complete = True
+                    if len(_usr) < MAX_RESULTS:
+                        is_complete = True
+
+                    else:
+                        offset += MAX_RESULTS
 
                 else:
-                    offset += MAX_RESULTS
+                    raise UserException(f"Could not download users."
+                                        f"Received: {rsp_users.status_code} - {rsp_users.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download users."
-                                    f"Received: {rsp_users.status_code} - {rsp_users.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_users
 
@@ -173,21 +193,26 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
-            rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
+            try:
+                rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
 
-            if rsp_organizations.status_code == 200:
-                _usr = rsp_organizations.json()['values']
-                all_organizations += _usr
+                if rsp_organizations.status_code == 200:
+                    _usr = rsp_organizations.json()['values']
+                    all_organizations += _usr
 
-                if len(_usr) < MAX_RESULTS_SERVICEDESK:
-                    is_complete = True
+                    if len(_usr) < MAX_RESULTS_SERVICEDESK:
+                        is_complete = True
+
+                    else:
+                        offset += MAX_RESULTS_SERVICEDESK
 
                 else:
-                    offset += MAX_RESULTS_SERVICEDESK
+                    raise UserException(f"Could not download organizations."
+                                        f"Received: {rsp_organizations.status_code} - {rsp_organizations.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download organizations."
-                                    f"Received: {rsp_organizations.status_code} - {rsp_organizations.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_organizations
 
@@ -204,21 +229,26 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
-            rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
+            try:
+                rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
 
-            if rsp_servicedesks.status_code == 200:
-                _usr = rsp_servicedesks.json()['values']
-                all_servicedesks += _usr
+                if rsp_servicedesks.status_code == 200:
+                    _usr = rsp_servicedesks.json()['values']
+                    all_servicedesks += _usr
 
-                if len(_usr) < MAX_RESULTS_SERVICEDESK:
-                    is_complete = True
+                    if len(_usr) < MAX_RESULTS_SERVICEDESK:
+                        is_complete = True
+
+                    else:
+                        offset += MAX_RESULTS_SERVICEDESK
 
                 else:
-                    offset += MAX_RESULTS_SERVICEDESK
+                    raise UserException(f"Could not download servicedesks."
+                                        f"Received: {rsp_servicedesks.status_code} - {rsp_servicedesks.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download servicedesks."
-                                    f"Received: {rsp_servicedesks.status_code} - {rsp_servicedesks.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_servicedesks
 
@@ -235,22 +265,27 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
-            rsp_users = await self.get_raw(endpoint=url_organization_users, params=params_organization_users,
-                                           headers={"X-ExperimentalApi": "opt-in"})
+            try:
+                rsp_users = await self.get_raw(endpoint=url_organization_users, params=params_organization_users,
+                                               headers={"X-ExperimentalApi": "opt-in"})
 
-            if rsp_users.status_code == 200:
-                _usr = rsp_users.json()['values']
-                all_users += _usr
+                if rsp_users.status_code == 200:
+                    _usr = rsp_users.json()['values']
+                    all_users += _usr
 
-                if len(_usr) < MAX_RESULTS_SERVICEDESK:
-                    is_complete = True
+                    if len(_usr) < MAX_RESULTS_SERVICEDESK:
+                        is_complete = True
+
+                    else:
+                        offset += MAX_RESULTS_SERVICEDESK
 
                 else:
-                    offset += MAX_RESULTS_SERVICEDESK
+                    raise UserException(f"Could not download users."
+                                        f"Received: {rsp_users.status_code} - {rsp_users.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download users."
-                                    f"Received: {rsp_users.status_code} - {rsp_users.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_users
 
@@ -261,14 +296,19 @@ class JiraClient(AsyncHttpClient):
             'expand': 'projects.issuetypes.fields'
         }
 
-        rsp_fields = await self.get_raw(endpoint=url_fields, params=params_fields)
+        try:
+            rsp_fields = await self.get_raw(endpoint=url_fields, params=params_fields)
 
-        if rsp_fields.status_code == 200:
-            return rsp_fields.json()
+            if rsp_fields.status_code == 200:
+                return rsp_fields.json()
 
-        else:
+            else:
+                raise UserException(f"Could not download fields."
+                                    f"Received: {rsp_fields.status_code} - {rsp_fields.text}.")
+
+        except httpx.HTTPStatusError as e:
             raise UserException(f"Could not download fields."
-                                f"Received: {rsp_fields.status_code} - {rsp_fields.text}.")
+                                f"Received: {e.response.status_code} - {e.response.text}.")
 
     @staticmethod
     def split_list_to_chunks(list_split, chunk_size):
@@ -289,21 +329,26 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
-            rsp_deleted = await self.get_raw(endpoint=url_deleted, params=params_deleted)
+            try:
+                rsp_deleted = await self.get_raw(endpoint=url_deleted, params=params_deleted)
 
-            if rsp_deleted.status_code == 200:
-                js_worklogs = rsp_deleted.json()
-                all_worklogs += js_worklogs['values']
+                if rsp_deleted.status_code == 200:
+                    js_worklogs = rsp_deleted.json()
+                    all_worklogs += js_worklogs['values']
 
-                if js_worklogs['lastPage'] is True:
-                    is_complete = True
+                    if js_worklogs['lastPage'] is True:
+                        is_complete = True
+
+                    else:
+                        param_since = js_worklogs['until']
 
                 else:
-                    param_since = js_worklogs['until']
+                    raise UserException(f"Could not download deleted worklogs."
+                                        f"Received: {rsp_deleted.status_code} - {rsp_deleted.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download deleted worklogs."
-                                    f"Received: {rsp_deleted.status_code} - {rsp_deleted.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_worklogs
 
@@ -320,21 +365,26 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
-            rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
+            try:
+                rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
 
-            if rsp_updated.status_code == 200:
-                js_worklogs = rsp_updated.json()
-                all_worklogs += js_worklogs['values']
+                if rsp_updated.status_code == 200:
+                    js_worklogs = rsp_updated.json()
+                    all_worklogs += js_worklogs['values']
 
-                if js_worklogs['lastPage'] is True:
-                    is_complete = True
+                    if js_worklogs['lastPage'] is True:
+                        is_complete = True
+
+                    else:
+                        param_since = js_worklogs['until']
 
                 else:
-                    param_since = js_worklogs['until']
+                    raise UserException(f"Could not download updated worklogs."
+                                        f"Received: {rsp_updated.status_code} - {rsp_updated.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download updated worklogs."
-                                    f"Received: {rsp_updated.status_code} - {rsp_updated.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_worklogs
 
@@ -345,15 +395,19 @@ class JiraClient(AsyncHttpClient):
         all_worklogs = []
 
         for w_list in list_gen:
+            try:
+                rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json={'ids': w_list})
 
-            rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json={'ids': w_list})
+                if rsp_worklogs.status_code == 200:
+                    all_worklogs += rsp_worklogs.json()
 
-            if rsp_worklogs.status_code == 200:
-                all_worklogs += rsp_worklogs.json()
+                else:
+                    raise UserException(f"Could not download changed worklogs."
+                                        f"Received: {rsp_worklogs.status_code} - {rsp_worklogs.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download changed worklogs."
-                                    f"Received: {rsp_worklogs.status_code} - {rsp_worklogs.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_worklogs
 
@@ -370,17 +424,22 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS_AGILE
             }
 
-            rsp_boards = await self.get_raw(endpoint=url_boards, params=params_boards)
+            try:
+                rsp_boards = await self.get_raw(endpoint=url_boards, params=params_boards)
 
-            if rsp_boards.status_code == 200:
-                _brd = rsp_boards.json()
-                all_boards += _brd['values']
-                is_complete = _brd['isLast']
-                offset += MAX_RESULTS_AGILE
+                if rsp_boards.status_code == 200:
+                    _brd = rsp_boards.json()
+                    all_boards += _brd['values']
+                    is_complete = _brd['isLast']
+                    offset += MAX_RESULTS_AGILE
 
-            else:
-                raise UserException(f"Could not download boards."
-                                    f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
+                else:
+                    raise UserException(f"Could not download boards."
+                                        f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
+
+            except httpx.HTTPStatusError as e:
+                raise UserException(f"Could not download boards. "
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_boards
 
@@ -397,17 +456,22 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS_AGILE
             }
 
-            rsp_boards = self.get_raw(url=url_boards, params=params_boards)
+            try:
+                rsp_boards = self.get_raw(url=url_boards, params=params_boards)
 
-            if rsp_boards.status_code == 200:
-                _brd = rsp_boards.json()
-                all_boards += _brd['values']
-                is_complete = _brd['isLast']
-                offset += MAX_RESULTS_AGILE
+                if rsp_boards.status_code == 200:
+                    _brd = rsp_boards.json()
+                    all_boards += _brd['values']
+                    is_complete = _brd['isLast']
+                    offset += MAX_RESULTS_AGILE
 
-            else:
-                raise UserException(f"Could not download boards."
-                                    f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
+                else:
+                    raise UserException(f"Could not download boards."
+                                        f"Received: {rsp_boards.status_code} - {rsp_boards.text}.")
+
+            except httpx.HTTPStatusError as e:
+                raise UserException(f"Could not download boards. "
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_boards
 
@@ -422,22 +486,27 @@ class JiraClient(AsyncHttpClient):
             'expand': 'changelog'
         }
 
-        rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+        try:
+            rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
-        if rsp_issues.status_code == 200:
-            issues = rsp_issues.json()['issues']
+            if rsp_issues.status_code == 200:
+                issues = rsp_issues.json()['issues']
 
-            if len(issues) < MAX_RESULTS:
-                is_complete = True
+                if len(issues) < MAX_RESULTS:
+                    is_complete = True
+
+                else:
+                    offset += MAX_RESULTS
+
+                return issues, is_complete, offset
 
             else:
-                offset += MAX_RESULTS
+                raise UserException(f"Could not download custom JQL."
+                                    f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
-            return issues, is_complete, offset
-
-        else:
+        except httpx.HTTPStatusError as e:
             raise UserException(f"Could not download custom JQL."
-                                f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
+                                f"Received: {e.response.status_code} - {e.response.text}.")
 
     async def get_board_sprints(self, board_id):
 
@@ -460,20 +529,15 @@ class JiraClient(AsyncHttpClient):
                     is_complete = _sprt['isLast']
                     offset += MAX_RESULTS_AGILE
 
-            except Exception as e:
-
+            except httpx.HTTPStatusError as e:
                 if e.response.status_code == 400 and \
-                        'The board does not support sprints' in e.response.json()['errorMessages']:
-                    break
-                elif e.response.status_code == 400 and \
-                        'Tabule nepodporuje sprinty' in e.response.json()['errorMessages']:
+                        ('The board does not support sprints' in e.response.text or
+                         'Tabule nepodporuje sprinty' in e.response.text):
                     break
 
                 else:
                     raise UserException(f"Could not download sprints for board {board_id}."
                                         f"Received: {e.response.status_code} - {e.response.text}.")
-
-                break
 
         return all_sprints
 
@@ -493,20 +557,25 @@ class JiraClient(AsyncHttpClient):
                 'fields': 'id,key'
             }
 
-            rsp_issues = await self.get_raw(url_issues, params=params_issues)
+            try:
+                rsp_issues = await self.get_raw(url_issues, params=params_issues)
 
-            if rsp_issues.status_code == 200:
-                _iss = rsp_issues.json()['issues']
-                all_issues += _iss
+                if rsp_issues.status_code == 200:
+                    _iss = rsp_issues.json()['issues']
+                    all_issues += _iss
 
-                if len(_iss) < MAX_RESULTS:
-                    is_complete = True
+                    if len(_iss) < MAX_RESULTS:
+                        is_complete = True
+
+                    else:
+                        offset += MAX_RESULTS
 
                 else:
-                    offset += MAX_RESULTS
+                    raise UserException(f"Could not download issues for sprint {sprint_id}."
+                                        f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
-            else:
+            except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download issues for sprint {sprint_id}."
-                                    f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
+                                    f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_issues
