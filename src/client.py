@@ -3,6 +3,7 @@ from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
 import httpx
+import json
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
@@ -12,6 +13,17 @@ MAX_RESULTS_AGILE = 50
 MAX_RESULTS_SERVICEDESK = 50
 
 logger = logging.getLogger(__name__)
+
+
+def log_request_details(method, url, params=None, headers=None, json_data=None):
+    """Helper function to log request details"""
+    logger.info(f"Making {method} request to: {url}")
+    if params:
+        logger.info(f"Request parameters: {json.dumps(params, indent=2)}")
+    if headers:
+        logger.info(f"Request headers: {json.dumps(headers, indent=2)}")
+    if json_data:
+        logger.info(f"Request body: {json.dumps(json_data, indent=2)}")
 
 
 class JiraClient(AsyncHttpClient):
@@ -24,17 +36,22 @@ class JiraClient(AsyncHttpClient):
         self.param_username = username
         self.param_api_token = api_token
 
+        headers = {
+            'accept': 'application/json',
+            'content-type': 'application/json'
+        }
+        logger.info(f"Initializing with headers: {json.dumps(headers, indent=2)}")
+
         super().__init__(self.param_base_url, auth=(self.param_username, self.param_api_token), retries=5,
-                         default_headers={
-                             'accept': 'application/json',
-                             'content-type': 'application/json'
-                         })
+                         default_headers=headers)
         logger.info("JiraClient initialized successfully")
 
     async def get_projects(self):
         logger.info("Starting to fetch projects")
         url_projects = urljoin(self.base_url, 'project')
         par_projects = {'expand': 'description'}
+
+        log_request_details('GET', url_projects, params=par_projects)
 
         try:
             rsp_projects = await self.get_raw(endpoint=url_projects, params=par_projects)
@@ -66,6 +83,8 @@ class JiraClient(AsyncHttpClient):
             'expand': 'properties'
         }
 
+        log_request_details('GET', url_comments, params=params)
+
         try:
             r = await self.get_raw(endpoint=url_comments, params=params)
             sc, js = r.status_code, r.json()
@@ -95,6 +114,8 @@ class JiraClient(AsyncHttpClient):
                 'startAt': offset,
                 'maxResults': MAX_RESULTS
             }
+
+            log_request_details('GET', url_changelogs, params=params_changelogs)
 
             try:
                 rsp_changelogs = await self.get_raw(endpoint=url_changelogs, params=params_changelogs)
@@ -137,6 +158,8 @@ class JiraClient(AsyncHttpClient):
             'expand': 'changelog'
         }
 
+        log_request_details('GET', url_issues, params=params_issues)
+
         try:
             rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
@@ -174,6 +197,8 @@ class JiraClient(AsyncHttpClient):
                 'startAt': offset,
                 'maxResults': MAX_RESULTS
             }
+
+            log_request_details('GET', url_users, params=params_users)
 
             try:
                 rsp_users = await self.get_raw(endpoint=url_users, params=params_users)
@@ -214,6 +239,8 @@ class JiraClient(AsyncHttpClient):
                 'start': offset,
                 'limit': MAX_RESULTS_SERVICEDESK
             }
+
+            log_request_details('GET', url_organizations, params=params_organizations)
 
             try:
                 rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
@@ -258,6 +285,8 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
+            log_request_details('GET', url_organizations, params=params_servicedesks)
+
             try:
                 rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
 
@@ -301,9 +330,12 @@ class JiraClient(AsyncHttpClient):
                 'limit': MAX_RESULTS_SERVICEDESK
             }
 
+            headers = {"X-ExperimentalApi": "opt-in"}
+            log_request_details('GET', url_organization_users, params=params_organization_users, headers=headers)
+
             try:
                 rsp_users = await self.get_raw(endpoint=url_organization_users, params=params_organization_users,
-                                               headers={"X-ExperimentalApi": "opt-in"})
+                                               headers=headers)
 
                 if rsp_users.status_code == 200:
                     _usr = rsp_users.json()['values']
@@ -338,6 +370,8 @@ class JiraClient(AsyncHttpClient):
             'expand': 'projects.issuetypes.fields'
         }
 
+        log_request_details('GET', url_fields, params=params_fields)
+
         try:
             rsp_fields = await self.get_raw(endpoint=url_fields, params=params_fields)
 
@@ -371,6 +405,8 @@ class JiraClient(AsyncHttpClient):
             params_deleted = {
                 'since': param_since
             }
+
+            log_request_details('GET', url_deleted, params=params_deleted)
 
             try:
                 rsp_deleted = await self.get_raw(endpoint=url_deleted, params=params_deleted)
@@ -416,6 +452,8 @@ class JiraClient(AsyncHttpClient):
                 'since': param_since
             }
 
+            log_request_details('GET', url_updated, params=params_updated)
+
             try:
                 rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
 
@@ -456,7 +494,10 @@ class JiraClient(AsyncHttpClient):
 
         for w_list in list_gen:
             try:
-                rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json={'ids': w_list})
+                json_data = {'ids': w_list}
+                log_request_details('POST', url_worklogs, json_data=json_data)
+
+                rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json=json_data)
 
                 if rsp_worklogs.status_code == 200:
                     all_worklogs += rsp_worklogs.json()
@@ -490,6 +531,8 @@ class JiraClient(AsyncHttpClient):
                 'startAt': offset,
                 'maxResults': MAX_RESULTS_AGILE
             }
+
+            log_request_details('GET', url_boards, params=params_boards)
 
             try:
                 rsp_boards = await self.get_raw(endpoint=url_boards, params=params_boards)
@@ -529,6 +572,8 @@ class JiraClient(AsyncHttpClient):
                 'maxResults': MAX_RESULTS_AGILE
             }
 
+            log_request_details('GET', url_boards, params=params_boards)
+
             try:
                 rsp_boards = self.get_raw(url=url_boards, params=params_boards)
 
@@ -566,6 +611,8 @@ class JiraClient(AsyncHttpClient):
             'maxResults': MAX_RESULTS,
             'expand': 'changelog'
         }
+
+        log_request_details('GET', url_issues, params=params_issues)
 
         try:
             rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
@@ -609,6 +656,9 @@ class JiraClient(AsyncHttpClient):
                 'startAt': offset,
                 'maxResults': MAX_RESULTS_AGILE
             }
+
+            log_request_details('GET', url_sprints, params=params_sprints)
+
             try:
                 rsp_sprints = await self.get_raw(url_sprints, params=params_sprints)
 
@@ -649,6 +699,8 @@ class JiraClient(AsyncHttpClient):
                 'jql': param_jql,
                 'fields': 'id,key'
             }
+
+            log_request_details('GET', url_issues, params=params_issues)
 
             try:
                 rsp_issues = await self.get_raw(url_issues, params=params_issues)
