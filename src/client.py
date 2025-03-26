@@ -4,6 +4,8 @@ from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
 import httpx
 import json
+import psutil
+import os
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
@@ -15,6 +17,12 @@ MAX_RESULTS_SERVICEDESK = 50
 logger = logging.getLogger(__name__)
 
 
+def get_memory_usage():
+    """Get current memory usage of the process"""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / 1024 / 1024  # Convert to MB
+
+
 def log_request_details(method, url, params=None, headers=None, json_data=None):
     """Helper function to log request details"""
     logger.info(f"Making {method} request to: {url}")
@@ -24,6 +32,15 @@ def log_request_details(method, url, params=None, headers=None, json_data=None):
         logger.info(f"Request headers: {json.dumps(headers, indent=2)}")
     if json_data:
         logger.info(f"Request body: {json.dumps(json_data, indent=2)}")
+    logger.info(f"Current memory usage: {get_memory_usage():.2f} MB")
+
+
+def log_response_details(response):
+    """Helper function to log response details"""
+    response_size = len(response.content) / 1024 / 1024  # Convert to MB
+    logger.info(f"Response size: {response_size:.2f} MB")
+    logger.info(f"Memory usage after response: {get_memory_usage():.2f} MB")
+    return response_size
 
 
 class JiraClient(AsyncHttpClient):
@@ -55,6 +72,7 @@ class JiraClient(AsyncHttpClient):
 
         try:
             rsp_projects = await self.get_raw(endpoint=url_projects, params=par_projects)
+            log_response_details(rsp_projects)
 
             if rsp_projects.status_code == 200:
                 logger.info("Successfully fetched projects")
@@ -87,6 +105,7 @@ class JiraClient(AsyncHttpClient):
 
         try:
             r = await self.get_raw(endpoint=url_comments, params=params)
+            log_response_details(r)
             sc, js = r.status_code, r.json()
 
             if sc == 200:
@@ -119,6 +138,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_changelogs = await self.get_raw(endpoint=url_changelogs, params=params_changelogs)
+                log_response_details(rsp_changelogs)
                 sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
 
                 if sc_changelogs == 200:
@@ -155,17 +175,21 @@ class JiraClient(AsyncHttpClient):
             'startAt': offset,
             'jql': param_jql,
             'maxResults': MAX_RESULTS,
-            'expand': 'changelog'
+            'expand': 'changelog',
+            'fields': 'key,summary,status,created,updated,issuetype,project,priority'  # Omezíme pole pro menší odpovědi
         }
 
         log_request_details('GET', url_issues, params=params_issues)
 
         try:
             rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+            log_response_details(rsp_issues)
+            response_size = log_response_details(rsp_issues)
 
             if rsp_issues.status_code == 200:
                 issues = rsp_issues.json()['issues']
                 logger.info(f"Successfully fetched {len(issues)} issues")
+                logger.info(f"Average issue size: {response_size / len(issues):.2f} MB per issue")
 
                 if len(issues) < MAX_RESULTS:
                     is_complete = True
@@ -202,6 +226,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_users = await self.get_raw(endpoint=url_users, params=params_users)
+                log_response_details(rsp_users)
 
                 if rsp_users.status_code == 200:
                     _usr = rsp_users.json()
@@ -244,6 +269,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
+                log_response_details(rsp_organizations)
 
                 if rsp_organizations.status_code == 200:
                     _usr = rsp_organizations.json()['values']
@@ -289,6 +315,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
+                log_response_details(rsp_servicedesks)
 
                 if rsp_servicedesks.status_code == 200:
                     _usr = rsp_servicedesks.json()['values']
@@ -336,6 +363,7 @@ class JiraClient(AsyncHttpClient):
             try:
                 rsp_users = await self.get_raw(endpoint=url_organization_users, params=params_organization_users,
                                                headers=headers)
+                log_response_details(rsp_users)
 
                 if rsp_users.status_code == 200:
                     _usr = rsp_users.json()['values']
@@ -374,6 +402,7 @@ class JiraClient(AsyncHttpClient):
 
         try:
             rsp_fields = await self.get_raw(endpoint=url_fields, params=params_fields)
+            log_response_details(rsp_fields)
 
             if rsp_fields.status_code == 200:
                 logger.info("Successfully fetched fields")
@@ -410,6 +439,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_deleted = await self.get_raw(endpoint=url_deleted, params=params_deleted)
+                log_response_details(rsp_deleted)
 
                 if rsp_deleted.status_code == 200:
                     js_worklogs = rsp_deleted.json()
@@ -456,6 +486,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_updated = await self.get_raw(endpoint=url_updated, params=params_updated)
+                log_response_details(rsp_updated)
 
                 if rsp_updated.status_code == 200:
                     js_worklogs = rsp_updated.json()
@@ -498,6 +529,7 @@ class JiraClient(AsyncHttpClient):
                 log_request_details('POST', url_worklogs, json_data=json_data)
 
                 rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json=json_data)
+                log_response_details(rsp_worklogs)
 
                 if rsp_worklogs.status_code == 200:
                     all_worklogs += rsp_worklogs.json()
@@ -536,6 +568,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_boards = await self.get_raw(endpoint=url_boards, params=params_boards)
+                log_response_details(rsp_boards)
 
                 if rsp_boards.status_code == 200:
                     _brd = rsp_boards.json()
@@ -576,6 +609,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_boards = self.get_raw(url=url_boards, params=params_boards)
+                log_response_details(rsp_boards)
 
                 if rsp_boards.status_code == 200:
                     _brd = rsp_boards.json()
@@ -616,6 +650,7 @@ class JiraClient(AsyncHttpClient):
 
         try:
             rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+            log_response_details(rsp_issues)
 
             if rsp_issues.status_code == 200:
                 issues = rsp_issues.json()['issues']
@@ -661,6 +696,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_sprints = await self.get_raw(url_sprints, params=params_sprints)
+                log_response_details(rsp_sprints)
 
                 if rsp_sprints.status_code == 200:
                     _sprt = rsp_sprints.json()
@@ -704,6 +740,7 @@ class JiraClient(AsyncHttpClient):
 
             try:
                 rsp_issues = await self.get_raw(url_issues, params=params_issues)
+                log_response_details(rsp_issues)
 
                 if rsp_issues.status_code == 200:
                     _iss = rsp_issues.json()['issues']
