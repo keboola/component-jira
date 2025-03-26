@@ -6,6 +6,9 @@ import httpx
 import json
 import psutil
 import os
+import time
+from collections import deque
+from typing import Tuple
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
 AGILE_URL = 'https://{0}.atlassian.net/rest/agile/1.0/'
@@ -13,8 +16,99 @@ SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
 MAX_RESULTS = 100
 MAX_RESULTS_AGILE = 50
 MAX_RESULTS_SERVICEDESK = 50
+MAX_METRICS_HISTORY = 100  # Počet posledních měření pro sledování trendů
 
 logger = logging.getLogger(__name__)
+
+
+class MetricsTracker:
+    def __init__(self, max_history: int = MAX_METRICS_HISTORY):
+        self.memory_history = deque(maxlen=max_history)
+        self.response_size_history = deque(maxlen=max_history)
+        self.timestamps = deque(maxlen=max_history)
+        self.start_time = time.time()
+        self.peak_memory = 0
+        self.peak_response_size = 0
+
+    def record_metrics(self, memory_usage: float, response_size: float):
+        """Record current metrics"""
+        current_time = time.time() - self.start_time
+        self.memory_history.append(memory_usage)
+        self.response_size_history.append(response_size)
+        self.timestamps.append(current_time)
+
+        # Update peaks
+        self.peak_memory = max(self.peak_memory, memory_usage)
+        self.peak_response_size = max(self.peak_response_size, response_size)
+
+    def get_memory_trend(self) -> Tuple[float, float]:
+        """Calculate memory trend (MB/s) and growth rate (%)"""
+        if len(self.memory_history) < 2:
+            return 0.0, 0.0
+
+        memory_change = self.memory_history[-1] - self.memory_history[0]
+        time_change = self.timestamps[-1] - self.timestamps[0]
+
+        if time_change == 0:
+            return 0.0, 0.0
+
+        trend = memory_change / time_change  # MB/s
+        growth_rate = (memory_change / self.memory_history[0] * 100) if self.memory_history[0] > 0 else 0
+
+        return trend, growth_rate
+
+    def get_response_size_trend(self) -> float:
+        """Calculate response size trend (MB/s)"""
+        if len(self.response_size_history) < 2:
+            return 0.0
+
+        response_change = self.response_size_history[-1] - self.response_size_history[0]
+        time_change = self.timestamps[-1] - self.timestamps[0]
+
+        if time_change == 0:
+            return 0.0
+
+        return response_change / time_change  # MB/s
+
+    def check_memory_leak(self) -> bool:
+        """Check for potential memory leak based on consistent growth"""
+        if len(self.memory_history) < 10:
+            return False
+
+        # Check if memory is consistently growing
+        recent_memory = list(self.memory_history)[-10:]
+        is_growing = all(recent_memory[i] <= recent_memory[i+1] for i in range(len(recent_memory)-1))
+        growth_rate = (recent_memory[-1] - recent_memory[0]) / recent_memory[0] * 100 if recent_memory[0] > 0 else 0
+
+        return is_growing and growth_rate > 5  # Consider it a leak if growing by more than 5%
+
+    def log_metrics(self):
+        """Log current metrics and trends"""
+        if not self.memory_history:
+            return
+
+        current_memory = self.memory_history[-1]
+        current_response = self.response_size_history[-1]
+        memory_trend, memory_growth = self.get_memory_trend()
+        response_trend = self.get_response_size_trend()
+
+        logger.info("=== Metrics Summary ===")
+        logger.info(f"Current memory usage: {current_memory:.2f} MB")
+        logger.info(f"Peak memory usage: {self.peak_memory:.2f} MB")
+        logger.info(f"Memory trend: {memory_trend:.2f} MB/s")
+        logger.info(f"Memory growth rate: {memory_growth:.2f}%")
+        logger.info(f"Current response size: {current_response:.2f} MB")
+        logger.info(f"Peak response size: {self.peak_response_size:.2f} MB")
+        logger.info(f"Response size trend: {response_trend:.2f} MB/s")
+        logger.info(f"Running time: {self.timestamps[-1]:.2f} seconds")
+
+        if self.check_memory_leak():
+            logger.warning("Potential memory leak detected - memory usage is consistently growing")
+        logger.info("=====================")
+
+
+# Create global metrics tracker
+metrics_tracker = MetricsTracker()
 
 
 def get_memory_usage():
@@ -32,14 +126,24 @@ def log_request_details(method, url, params=None, headers=None, json_data=None):
         logger.info(f"Request headers: {json.dumps(headers, indent=2)}")
     if json_data:
         logger.info(f"Request body: {json.dumps(json_data, indent=2)}")
-    logger.info(f"Current memory usage: {get_memory_usage():.2f} MB")
+
+    current_memory = get_memory_usage()
+    logger.info(f"Current memory usage: {current_memory:.2f} MB")
+    metrics_tracker.record_metrics(current_memory, 0)  # Record memory before request
 
 
 def log_response_details(response):
     """Helper function to log response details"""
     response_size = len(response.content) / 1024 / 1024  # Convert to MB
+    current_memory = get_memory_usage()
+
     logger.info(f"Response size: {response_size:.2f} MB")
-    logger.info(f"Memory usage after response: {get_memory_usage():.2f} MB")
+    logger.info(f"Memory usage after response: {current_memory:.2f} MB")
+
+    # Record metrics for trend analysis
+    metrics_tracker.record_metrics(current_memory, response_size)
+    metrics_tracker.log_metrics()  # Log metrics summary after each response
+
     return response_size
 
 
