@@ -294,7 +294,7 @@ class JiraComponent(ComponentBase):
         return text
 
     async def get_and_write_issues(self):
-        offset = 0
+        page_token = None
         is_complete = False
         download_further_changelogs = []
 
@@ -306,8 +306,8 @@ class JiraComponent(ComponentBase):
 
         while is_complete is False:
 
-            issues, is_complete, offset = await self.client.get_issues(self.param_since_date, offset=offset,
-                                                                       issue_jql_filter=self.cfg.issue_jql_filter)
+            issues, is_complete, page_token = await self.client.get_issues(self.param_since_date, page_token=page_token,
+                                                                           issue_jql_filter=self.cfg.issue_jql_filter)
             issues_f = []
 
             for issue in issues:
@@ -338,52 +338,48 @@ class JiraComponent(ComponentBase):
                         download_further_changelogs += [(issue['id'], issue['key'])]
 
                     else:
-                        all_changelogs = []
                         _changelogs = [{**x, **{'issue_id': issue['id'], 'issue_key': issue['key']}}
                                        for x in _changelog['histories']]
 
-                        for changelog in _changelogs:
-                            _out = dict()
-                            _out['total_changed_items'] = len(changelog['items'])
-                            _out['id'] = changelog['id']
-                            _out['issue_id'] = changelog['issue_id']
-                            _out['issue_key'] = changelog['issue_key']
-                            _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
-                            _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
-                            _out['created'] = changelog['created']
-
-                            for idx, item in enumerate(changelog['items'], start=1):
-                                item['changed_item_order'] = idx
-                                all_changelogs += [{**_out, **item}]
-
-                        writer_changelogs.writerows(all_changelogs)
+                        await self._process_changelogs(_changelogs, writer_changelogs)
 
             writer_issues.writerows(issues_f)
 
         writer_issues.close()
 
-        for issue in download_further_changelogs:
-            all_changelogs = []
-            _changelogs = [{**c, **{'issue_id': issue[0], 'issue_key': issue[1]}}
-                           for c in await self.client.get_changelogs(issue[1])]
+        await self._get_changelogs(download_further_changelogs, writer_changelogs)
 
-            for changelog in _changelogs:
-                _out = dict()
-                _out['total_changed_items'] = len(changelog['items'])
-                _out['id'] = changelog['id']
-                _out['issue_id'] = changelog['issue_id']
-                _out['issue_key'] = changelog['issue_key']
-                _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
-                _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
-                _out['created'] = changelog['created']
-
-                for idx, item in enumerate(changelog['items'], start=1):
-                    item['changed_item_order'] = idx
-                    all_changelogs += [{**_out, **item}]
-
-            writer_changelogs.writerows(all_changelogs)
         if writer_changelogs:
             writer_changelogs.close()
+
+    async def _get_changelogs(self, download_further_changelogs, writer_changelogs):
+        issue_keys = [issue[1] for issue in download_further_changelogs]
+        change_histories = await self.client.get_bulk_changelogs(issue_keys)
+
+        for changelogs in change_histories:
+            # batch changelogs are returned in a dictionary with the issueId and without the issueKey
+            issue_id = changelogs['issueId']
+            issue_key = next(issue[1] for issue in download_further_changelogs if issue[0] == issue_id)
+            await self._process_changelogs(changelogs['changeHistories'], writer_changelogs, issue_id, issue_key)
+
+    @staticmethod
+    async def _process_changelogs(_changelogs, writer_changelogs, issue_id=None, issue_key=None):
+        all_changelogs = []
+        for changelog in _changelogs:
+            _out = dict()
+            _out['total_changed_items'] = len(changelog['items'])
+            _out['id'] = changelog['id']
+            _out['issue_id'] = issue_id or changelog['issue_id']
+            _out['issue_key'] = issue_key or changelog['issue_key']
+            _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
+            _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
+            _out['created'] = changelog['created']
+
+            for idx, item in enumerate(changelog['items'], start=1):
+                item['changed_item_order'] = idx
+                all_changelogs += [{**_out, **item}]
+
+        writer_changelogs.writerows(all_changelogs)
 
     async def get_and_write_boards_and_sprints(self):
 

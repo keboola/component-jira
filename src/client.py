@@ -2,6 +2,7 @@ import logging
 from keboola.component import UserException
 from urllib.parse import urljoin
 from keboola.http_client.async_client import AsyncHttpClient
+from itertools import islice
 import httpx
 
 BASE_URL = 'https://{0}.atlassian.net/rest/api/3/'
@@ -26,7 +27,7 @@ class JiraClient(AsyncHttpClient):
                          default_headers={
                              'accept': 'application/json',
                              'content-type': 'application/json'
-                         })
+                         }, debug=True)
 
     async def get_projects(self):
 
@@ -73,75 +74,93 @@ class JiraClient(AsyncHttpClient):
 
         return comments
 
-    async def get_changelogs(self, issue_key):
+    @staticmethod
+    def _batch_iterator(iterable, batch_size=1000):
+        """Iterator that splits iterable into batches of specified size"""
+        iterator = iter(iterable)
+        while batch := list(islice(iterator, batch_size)):
+            yield batch
 
-        url_changelogs = urljoin(self.base_url, f'issue/{issue_key}/changelog')
-        offset = 0
+    async def get_bulk_changelogs(self, issue_keys: list):
+        logging.debug(f"Downloading changelogs for {len(issue_keys)} issues.")
         all_changelogs = []
-        is_complete = False
 
-        while is_complete is False:
-            params_changelogs = {
-                'startAt': offset,
-                'maxResults': MAX_RESULTS
-            }
+        for batch_keys in self._batch_iterator(issue_keys):
+            logging.debug(f"Downloading part of changelogs for {len(batch_keys)} issues.")
+            url_changelogs = urljoin(self.base_url, f'changelog/bulkfetch')
+            page_token = None
+            is_complete = False
 
-            try:
-                rsp_changelogs = await self.get_raw(endpoint=url_changelogs, params=params_changelogs)
-                sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
+            while is_complete is False:
+                params_changelogs = {
+                    'issueIdsOrKeys': batch_keys,
+                    'maxResults': MAX_RESULTS
+                }
 
-                if sc_changelogs == 200:
-                    all_changelogs += js_changelogs['values']
-                    offset += MAX_RESULTS
-                    is_complete = js_changelogs['isLast']
+                # Add page_token to parameters only if it exists
+                if page_token:
+                    params_changelogs['nextPageToken'] = page_token
 
-                else:
-                    raise UserException(f"Could not download changelogs for issue {issue_key}."
-                                        f"Received: {sc_changelogs} - {js_changelogs}.")
+                try:
+                    rsp_changelogs = await self.post_raw(endpoint=url_changelogs, json=params_changelogs)
+                    sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
 
-            except httpx.HTTPStatusError as e:
-                raise UserException(f"Could not download changelogs for issue {issue_key}."
-                                    f"Received: {e.response.status_code} - {e.response.text}.")
+                    if sc_changelogs == 200:
+                        all_changelogs += js_changelogs.get('issueChangeLogs')
+                        next_page_token = js_changelogs.get('nextPageToken')
+
+                        # If nextPageToken is not in response, we're on the last page
+                        is_complete = next_page_token is None
+                        page_token = next_page_token
+
+                    else:
+                        raise UserException(f"Could not download bulk changelogs."
+                                            f"Received: {sc_changelogs} - {js_changelogs}.")
+
+                except httpx.HTTPStatusError as e:
+                    raise UserException(f"Could not download bulk changelogs."
+                                        f"Received: {e.response.status_code} - {e.response.text}.")
 
         return all_changelogs
 
-    async def get_issues(self, update_date=None, offset=0, issue_jql_filter=None):
+    async def get_issues(self, update_date=None, page_token=None, issue_jql_filter=None):
+        url_issues = urljoin(self.param_base_url, 'search/jql')
 
-        url_issues = urljoin(self.param_base_url, 'search')
         if issue_jql_filter:
             param_jql = issue_jql_filter
         else:
             param_jql = f'updated >= {update_date}' if update_date else None
 
-        is_complete = False
-
         params_issues = {
-            'startAt': offset,
             'jql': param_jql,
             'maxResults': MAX_RESULTS,
-            'expand': 'changelog'
+            'expand': 'changelog',
+            'fields': '*all'
         }
+
+        # Add page_token to parameters only if it exists
+        if page_token:
+            params_issues['nextPageToken'] = page_token
 
         try:
             rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
             if rsp_issues.status_code == 200:
-                issues = rsp_issues.json()['issues']
+                response_data = rsp_issues.json()
+                issues = response_data['issues']
+                next_page_token = response_data.get('nextPageToken')
 
-                if len(issues) < MAX_RESULTS:
-                    is_complete = True
+                # If nextPageToken is not in response, we're on the last page
+                is_complete = next_page_token is None
 
-                else:
-                    offset += MAX_RESULTS
-
-                return issues, is_complete, offset
+                return issues, is_complete, next_page_token
 
             else:
-                raise UserException(f"Could not download issues."
+                raise UserException(f"Could not download issues. "
                                     f"Received: {rsp_issues.status_code} - {rsp_issues.text}.")
 
         except httpx.HTTPStatusError as e:
-            raise UserException(f"Could not download issues."
+            raise UserException(f"Could not download issues. "
                                 f"Received: {e.response.status_code} - {e.response.text}.")
 
     async def get_users(self):
@@ -476,14 +495,15 @@ class JiraClient(AsyncHttpClient):
         return all_boards
 
     async def get_custom_jql(self, jql, offset=0):
-        url_issues = urljoin(self.param_base_url, 'search')
+        url_issues = urljoin(self.param_base_url, 'search/jql')
         is_complete = False
 
         params_issues = {
             'startAt': offset,
             'jql': jql,
             'maxResults': MAX_RESULTS,
-            'expand': 'changelog'
+            'expand': 'changelog',
+            'fields': '*all'
         }
 
         try:
