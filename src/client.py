@@ -87,7 +87,7 @@ class JiraClient(AsyncHttpClient):
 
         for batch_keys in self._batch_iterator(issue_keys):
             logging.debug(f"Downloading part of changelogs for {len(batch_keys)} issues.")
-            url_changelogs = urljoin(self.base_url, f'changelog/bulkfetch')
+            url_changelogs = urljoin(self.base_url, 'changelog/bulkfetch')
             page_token = None
             is_complete = False
 
