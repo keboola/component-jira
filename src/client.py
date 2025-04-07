@@ -11,6 +11,7 @@ SERVICEDESK_URL = 'https://{0}.atlassian.net/rest/servicedeskapi/'
 MAX_RESULTS = 100
 MAX_RESULTS_AGILE = 50
 MAX_RESULTS_SERVICEDESK = 50
+REQUEST_TIMEOUT = 120
 
 
 class JiraClient(AsyncHttpClient):
@@ -27,7 +28,7 @@ class JiraClient(AsyncHttpClient):
                          default_headers={
                              'accept': 'application/json',
                              'content-type': 'application/json'
-                         }, debug=True)
+                         }, timeout=REQUEST_TIMEOUT, debug=True)
 
     async def get_projects(self):
 
