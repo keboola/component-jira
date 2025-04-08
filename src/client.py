@@ -305,7 +305,7 @@ class JiraClient(AsyncHttpClient):
     @staticmethod
     def split_list_to_chunks(list_split, chunk_size):
         for i in range(0, len(list_split), chunk_size):
-            yield list_split[i : i + chunk_size]
+            yield list_split[i:i + chunk_size]
 
     async def get_deleted_worklogs(self, since=None):
         url_deleted = urljoin(self.param_base_url, "worklog/deleted")

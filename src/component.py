@@ -274,7 +274,7 @@ class JiraComponent(ComponentBase):
         buffer_size = 100
 
         for i in range(0, total_worklogs, batch_size):
-            batch_worklog_ids = worklog_ids[i : i + batch_size]
+            batch_worklog_ids = worklog_ids[i:i + batch_size]
             async for worklog in self.client.get_worklogs(batch_worklog_ids):
                 worklog_out = {**worklog, **{"comment": self.parse_description(worklog.get("comment", "")).strip("\n")}}
                 buffer.append(worklog_out)
