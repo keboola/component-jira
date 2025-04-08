@@ -197,10 +197,18 @@ class JiraComponent(ComponentBase):
         wr.close()
 
     async def get_and_write_users(self):
-
-        users = await self.client.get_users()
         wr = JiraWriter(self.tables_out_path, 'users', self.cfg.incremental)
-        wr.writerows(users)
+        buffer = []
+        buffer_size = 100  # Adjust this based on memory constraints
+        
+        async for user in self.client.get_users():
+            buffer.append(user)
+            if len(buffer) >= buffer_size:
+                wr.writerows(buffer)
+                buffer = []
+        
+        if buffer:  # Write any remaining items
+            wr.writerows(buffer)
         wr.close()
 
     async def get_and_write_fields(self):
@@ -211,47 +219,86 @@ class JiraComponent(ComponentBase):
         wr.close()
 
     async def get_and_write_organizations(self):
-
-        organizations = await self.client.get_organizations()
         wr = JiraWriter(self.tables_out_path, 'organizations', self.cfg.incremental)
-        wr.writerows(organizations)
+        buffer = []
+        buffer_size = 100
+        
+        async for organization in self.client.get_organizations():
+            buffer.append(organization)
+            if len(buffer) >= buffer_size:
+                wr.writerows(buffer)
+                buffer = []
+        
+        if buffer:
+            wr.writerows(buffer)
         wr.close()
 
     async def get_and_write_servicedesks_and_customers(self):
-
-        organizations = await self.client.get_servicedesks()
+        # Create a list to collect servicedesks for later use
+        servicedesks = []
         wr = JiraWriter(self.tables_out_path, 'servicedesks', self.cfg.incremental)
-        wr.writerows(organizations)
+        buffer = []
+        buffer_size = 100
+        
+        async for desk in self.client.get_servicedesks():
+            servicedesks.append(desk)
+            buffer.append(desk)
+            if len(buffer) >= buffer_size:
+                wr.writerows(buffer)
+                buffer = []
+        
+        if buffer:
+            wr.writerows(buffer)
         wr.close()
 
-        for organization in organizations:
-            customers = await self.client.get_servicedesk_customers(organization['id'])
+        for organization in servicedesks:
             wr = JiraWriter(self.tables_out_path, 'servicedesk-customers', self.cfg.incremental)
-            wr.writerows(customers)
+            buffer = []
+            
+            async for customer in self.client.get_servicedesk_customers(organization['id']):
+                buffer.append(customer)
+                if len(buffer) >= buffer_size:
+                    wr.writerows(buffer)
+                    buffer = []
+            
+            if buffer:
+                wr.writerows(buffer)
             wr.close()
 
     async def get_and_write_worklogs(self, batch_size=1000):
-        _worklogs_u = [w['worklogId'] for w in await self.client.get_updated_worklogs(self.param_since_unix)]
-        total_worklogs = len(_worklogs_u)
+        worklog_ids = []
+        async for worklog in self.client.get_updated_worklogs(self.param_since_unix):
+            worklog_ids.append(worklog['worklogId'])
+        total_worklogs = len(worklog_ids)
 
         wr = JiraWriter(self.tables_out_path, 'worklogs', self.cfg.incremental)
+        buffer = []
+        buffer_size = 100
 
         for i in range(0, total_worklogs, batch_size):
-            batch_worklog_ids = _worklogs_u[i:i + batch_size]
-            batch_worklogs = await self.client.get_worklogs(batch_worklog_ids)
-
-            worklogs_out = []
-
-            for w in batch_worklogs:
-                worklogs_out.append({**w, **{'comment': self.parse_description(w.get('comment', '')).strip('\n')}})
-
-            wr.writerows(worklogs_out)
-
+            batch_worklog_ids = worklog_ids[i:i + batch_size]
+            async for worklog in self.client.get_worklogs(batch_worklog_ids):
+                worklog_out = {**worklog, **{'comment': self.parse_description(worklog.get('comment', '')).strip('\n')}}
+                buffer.append(worklog_out)
+                if len(buffer) >= buffer_size:
+                    wr.writerows(buffer)
+                    buffer = []
+        
+        if buffer:
+            wr.writerows(buffer)
         wr.close()
 
-        worklogs_deleted = await self.client.get_deleted_worklogs(self.param_since_unix)
         wr = JiraWriter(self.tables_out_path, 'worklogs-deleted', self.cfg.incremental)
-        wr.writerows(worklogs_deleted)
+        buffer = []
+        
+        async for worklog in self.client.get_deleted_worklogs(self.param_since_unix):
+            buffer.append(worklog)
+            if len(buffer) >= buffer_size:
+                wr.writerows(buffer)
+                buffer = []
+        
+        if buffer:
+            wr.writerows(buffer)
         wr.close()
 
     def parse_description(self, description) -> str:
@@ -354,13 +401,11 @@ class JiraComponent(ComponentBase):
 
     async def _get_changelogs(self, download_further_changelogs, writer_changelogs):
         issue_keys = [issue[1] for issue in download_further_changelogs]
-        change_histories = await self.client.get_bulk_changelogs(issue_keys)
-
-        for changelogs in change_histories:
+        async for changelog in self.client.get_bulk_changelogs(issue_keys):
             # batch changelogs are returned in a dictionary with the issueId and without the issueKey
-            issue_id = changelogs['issueId']
+            issue_id = changelog['issueId']
             issue_key = next(issue[1] for issue in download_further_changelogs if issue[0] == issue_id)
-            await self._process_changelogs(changelogs['changeHistories'], writer_changelogs, issue_id, issue_key)
+            await self._process_changelogs(changelog['changeHistories'], writer_changelogs, issue_id, issue_key)
 
     @staticmethod
     async def _process_changelogs(_changelogs, writer_changelogs, issue_id=None, issue_key=None):
@@ -382,26 +427,46 @@ class JiraComponent(ComponentBase):
         writer_changelogs.writerows(all_changelogs)
 
     async def get_and_write_boards_and_sprints(self):
-
-        boards = await self.client.get_all_boards()
+        # Collect boards
+        boards = []
+        async for board in self.client.get_all_boards():
+            boards.append(board)
+        
         _boards = [b['id'] for b in boards]
         JiraWriter(self.tables_out_path, 'boards', self.cfg.incremental).writerows(boards)
 
         sprint_writer = JiraWriter(self.tables_out_path, 'sprints', self.cfg.incremental)
         all_sprints = []
+        buffer = []
+        buffer_size = 100
+        
         for board in _boards:
-            sprints = await self.client.get_board_sprints(board)
-            all_sprints += [s['id'] for s in sprints if
-                            s.get('completeDate', self.param_since_date) >= self.param_since_date]
-            sprints = [{**s, **{'board_id': board}} for s in sprints]
-            sprint_writer.writerows(sprints)
+            async for sprint in self.client.get_board_sprints(board):
+                if sprint.get('completeDate', self.param_since_date) >= self.param_since_date:
+                    all_sprints.append(sprint['id'])
+                sprint_with_board = {**sprint, **{'board_id': board}}
+                buffer.append(sprint_with_board)
+                if len(buffer) >= buffer_size:
+                    sprint_writer.writerows(buffer)
+                    buffer = []
+        
+        if buffer:
+            sprint_writer.writerows(buffer)
         sprint_writer.close()
 
         issues_writer = JiraWriter(self.tables_out_path, 'sprints-issues', self.cfg.incremental)
+        buffer = []
+        
         for sprint in set(all_sprints):
-            issues = await self.client.get_sprint_issues(sprint, update_date=self.param_since_date)
-            issues = [{**i, **{'sprint_id': sprint}} for i in issues]
-            issues_writer.writerows(issues)
+            async for issue in self.client.get_sprint_issues(sprint, update_date=self.param_since_date):
+                issue_with_sprint = {**issue, **{'sprint_id': sprint}}
+                buffer.append(issue_with_sprint)
+                if len(buffer) >= buffer_size:
+                    issues_writer.writerows(buffer)
+                    buffer = []
+        
+        if buffer:
+            issues_writer.writerows(buffer)
         issues_writer.close()
 
     async def get_and_write_custom_jql(self, jql, table_name):

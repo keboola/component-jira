@@ -84,7 +84,6 @@ class JiraClient(AsyncHttpClient):
 
     async def get_bulk_changelogs(self, issue_keys: list):
         logging.debug(f"Downloading changelogs for {len(issue_keys)} issues.")
-        all_changelogs = []
 
         for batch_keys in self._batch_iterator(issue_keys):
             logging.debug(f"Downloading part of changelogs for {len(batch_keys)} issues.")
@@ -107,7 +106,8 @@ class JiraClient(AsyncHttpClient):
                     sc_changelogs, js_changelogs = rsp_changelogs.status_code, rsp_changelogs.json()
 
                     if sc_changelogs == 200:
-                        all_changelogs += js_changelogs.get('issueChangeLogs')
+                        for changelog in js_changelogs.get('issueChangeLogs', []):
+                            yield changelog
                         next_page_token = js_changelogs.get('nextPageToken')
 
                         # If nextPageToken is not in response, we're on the last page
@@ -121,8 +121,6 @@ class JiraClient(AsyncHttpClient):
                 except httpx.HTTPStatusError as e:
                     raise UserException(f"Could not download bulk changelogs."
                                         f"Received: {e.response.status_code} - {e.response.text}.")
-
-        return all_changelogs
 
     async def get_issues(self, update_date=None, page_token=None, issue_jql_filter=None):
         url_issues = urljoin(self.param_base_url, 'search/jql')
@@ -165,10 +163,8 @@ class JiraClient(AsyncHttpClient):
                                 f"Received: {e.response.status_code} - {e.response.text}.")
 
     async def get_users(self):
-
         url_users = urljoin(self.param_base_url, 'users')
         offset = 0
-        all_users = []
         is_complete = False
 
         while is_complete is False:
@@ -181,12 +177,12 @@ class JiraClient(AsyncHttpClient):
                 rsp_users = await self.get_raw(endpoint=url_users, params=params_users)
 
                 if rsp_users.status_code == 200:
-                    _usr = rsp_users.json()
-                    all_users += _usr
+                    users = rsp_users.json()
+                    for user in users:
+                        yield user
 
-                    if len(_usr) < MAX_RESULTS:
+                    if len(users) < MAX_RESULTS:
                         is_complete = True
-
                     else:
                         offset += MAX_RESULTS
 
@@ -198,13 +194,9 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download users."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_users
-
     async def get_organizations(self):
-
         url_organizations = urljoin(self.param_servicedesk_url, 'organization')
         offset = 0
-        all_organizations = []
         is_complete = False
 
         while is_complete is False:
@@ -217,12 +209,12 @@ class JiraClient(AsyncHttpClient):
                 rsp_organizations = await self.get_raw(endpoint=url_organizations, params=params_organizations)
 
                 if rsp_organizations.status_code == 200:
-                    _usr = rsp_organizations.json()['values']
-                    all_organizations += _usr
+                    orgs = rsp_organizations.json()['values']
+                    for org in orgs:
+                        yield org
 
-                    if len(_usr) < MAX_RESULTS_SERVICEDESK:
+                    if len(orgs) < MAX_RESULTS_SERVICEDESK:
                         is_complete = True
-
                     else:
                         offset += MAX_RESULTS_SERVICEDESK
 
@@ -234,13 +226,9 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download organizations."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_organizations
-
     async def get_servicedesks(self):
-
         url_organizations = urljoin(self.param_servicedesk_url, 'servicedesk')
         offset = 0
-        all_servicedesks = []
         is_complete = False
 
         while is_complete is False:
@@ -253,12 +241,12 @@ class JiraClient(AsyncHttpClient):
                 rsp_servicedesks = await self.get_raw(endpoint=url_organizations, params=params_servicedesks)
 
                 if rsp_servicedesks.status_code == 200:
-                    _usr = rsp_servicedesks.json()['values']
-                    all_servicedesks += _usr
+                    desks = rsp_servicedesks.json()['values']
+                    for desk in desks:
+                        yield desk
 
-                    if len(_usr) < MAX_RESULTS_SERVICEDESK:
+                    if len(desks) < MAX_RESULTS_SERVICEDESK:
                         is_complete = True
-
                     else:
                         offset += MAX_RESULTS_SERVICEDESK
 
@@ -270,13 +258,9 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download servicedesks."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_servicedesks
-
     async def get_servicedesk_customers(self, servicedesk_id: str):
-
         url_organization_users = urljoin(self.param_servicedesk_url, f'servicedesk/{servicedesk_id}/customer')
         offset = 0
-        all_users = []
         is_complete = False
 
         while is_complete is False:
@@ -290,12 +274,12 @@ class JiraClient(AsyncHttpClient):
                                                headers={"X-ExperimentalApi": "opt-in"})
 
                 if rsp_users.status_code == 200:
-                    _usr = rsp_users.json()['values']
-                    all_users += _usr
+                    users = rsp_users.json()['values']
+                    for user in users:
+                        yield user
 
-                    if len(_usr) < MAX_RESULTS_SERVICEDESK:
+                    if len(users) < MAX_RESULTS_SERVICEDESK:
                         is_complete = True
-
                     else:
                         offset += MAX_RESULTS_SERVICEDESK
 
@@ -306,8 +290,6 @@ class JiraClient(AsyncHttpClient):
             except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download users."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
-
-        return all_users
 
     async def get_fields(self):
 
@@ -337,14 +319,11 @@ class JiraClient(AsyncHttpClient):
             yield list_split[i:i + chunk_size]
 
     async def get_deleted_worklogs(self, since=None):
-
         url_deleted = urljoin(self.param_base_url, 'worklog/deleted')
         param_since = since
         is_complete = False
-        all_worklogs = []
 
         while is_complete is False:
-
             params_deleted = {
                 'since': param_since
             }
@@ -354,11 +333,11 @@ class JiraClient(AsyncHttpClient):
 
                 if rsp_deleted.status_code == 200:
                     js_worklogs = rsp_deleted.json()
-                    all_worklogs += js_worklogs['values']
+                    for worklog in js_worklogs['values']:
+                        yield worklog
 
                     if js_worklogs['lastPage'] is True:
                         is_complete = True
-
                     else:
                         param_since = js_worklogs['until']
 
@@ -370,17 +349,12 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download deleted worklogs."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_worklogs
-
     async def get_updated_worklogs(self, since=None):
-
         url_updated = urljoin(self.param_base_url, 'worklog/updated')
         param_since = since
         is_complete = False
-        all_worklogs = []
 
         while is_complete is False:
-
             params_updated = {
                 'since': param_since
             }
@@ -390,11 +364,11 @@ class JiraClient(AsyncHttpClient):
 
                 if rsp_updated.status_code == 200:
                     js_worklogs = rsp_updated.json()
-                    all_worklogs += js_worklogs['values']
+                    for worklog in js_worklogs['values']:
+                        yield worklog
 
                     if js_worklogs['lastPage'] is True:
                         is_complete = True
-
                     else:
                         param_since = js_worklogs['until']
 
@@ -406,20 +380,17 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download updated worklogs."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_worklogs
-
     async def get_worklogs(self, worklog_ids):
-
         url_worklogs = urljoin(self.base_url, 'worklog/list')
         list_gen = self.split_list_to_chunks(worklog_ids, 1000)
-        all_worklogs = []
 
         for w_list in list_gen:
             try:
                 rsp_worklogs = await self.post_raw(endpoint=url_worklogs, json={'ids': w_list})
 
                 if rsp_worklogs.status_code == 200:
-                    all_worklogs += rsp_worklogs.json()
+                    for worklog in rsp_worklogs.json():
+                        yield worklog
 
                 else:
                     raise UserException(f"Could not download changed worklogs."
@@ -429,14 +400,10 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download changed worklogs."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_worklogs
-
     async def get_all_boards(self):
-
         url_boards = urljoin(self.param_agile_url, 'board')
         offset = 0
         is_complete = False
-        all_boards = []
 
         while is_complete is False:
             params_boards = {
@@ -449,7 +416,8 @@ class JiraClient(AsyncHttpClient):
 
                 if rsp_boards.status_code == 200:
                     _brd = rsp_boards.json()
-                    all_boards += _brd['values']
+                    for board in _brd['values']:
+                        yield board
                     is_complete = _brd['isLast']
                     offset += MAX_RESULTS_AGILE
 
@@ -461,14 +429,10 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download boards. "
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_boards
-
     def get_all_customers(self):
-
         url_boards = urljoin(self.param_base_url, 'board')
         offset = 0
         is_complete = False
-        all_boards = []
 
         while is_complete is False:
             params_boards = {
@@ -481,7 +445,8 @@ class JiraClient(AsyncHttpClient):
 
                 if rsp_boards.status_code == 200:
                     _brd = rsp_boards.json()
-                    all_boards += _brd['values']
+                    for board in _brd['values']:
+                        yield board
                     is_complete = _brd['isLast']
                     offset += MAX_RESULTS_AGILE
 
@@ -492,8 +457,6 @@ class JiraClient(AsyncHttpClient):
             except httpx.HTTPStatusError as e:
                 raise UserException(f"Could not download boards. "
                                     f"Received: {e.response.status_code} - {e.response.text}.")
-
-        return all_boards
 
     async def get_custom_jql(self, jql, offset=0):
         url_issues = urljoin(self.param_base_url, 'search/jql')
@@ -530,11 +493,9 @@ class JiraClient(AsyncHttpClient):
                                 f"Received: {e.response.status_code} - {e.response.text}.")
 
     async def get_board_sprints(self, board_id):
-
         url_sprints = urljoin(self.param_agile_url, f'board/{board_id}/sprint')
         offset = 0
         is_complete = False
-        all_sprints = []
 
         while is_complete is False:
             params_sprints = {
@@ -546,7 +507,8 @@ class JiraClient(AsyncHttpClient):
 
                 if rsp_sprints.status_code == 200:
                     _sprt = rsp_sprints.json()
-                    all_sprints += _sprt['values']
+                    for sprint in _sprt['values']:
+                        yield sprint
                     is_complete = _sprt['isLast']
                     offset += MAX_RESULTS_AGILE
 
@@ -560,15 +522,11 @@ class JiraClient(AsyncHttpClient):
                     raise UserException(f"Could not download sprints for board {board_id}."
                                         f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_sprints
-
     async def get_sprint_issues(self, sprint_id, update_date=None):
-
         url_issues = urljoin(self.param_agile_url, f'sprint/{sprint_id}/issue')
         param_jql = f'updated >= {update_date}' if update_date is not None else None
         is_complete = False
         offset = 0
-        all_issues = []
 
         while is_complete is False:
             params_issues = {
@@ -582,12 +540,12 @@ class JiraClient(AsyncHttpClient):
                 rsp_issues = await self.get_raw(url_issues, params=params_issues)
 
                 if rsp_issues.status_code == 200:
-                    _iss = rsp_issues.json()['issues']
-                    all_issues += _iss
+                    issues = rsp_issues.json()['issues']
+                    for issue in issues:
+                        yield issue
 
-                    if len(_iss) < MAX_RESULTS:
+                    if len(issues) < MAX_RESULTS:
                         is_complete = True
-
                     else:
                         offset += MAX_RESULTS
 
@@ -599,4 +557,6 @@ class JiraClient(AsyncHttpClient):
                 raise UserException(f"Could not download issues for sprint {sprint_id}."
                                     f"Received: {e.response.status_code} - {e.response.text}.")
 
-        return all_issues
+    def writerow(self, row):
+        """Write a single row to the output"""
+        self.writerows([row])
