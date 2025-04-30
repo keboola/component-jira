@@ -15,6 +15,7 @@ from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
 
 KEY_JQL = "jql"
 KEY_TABLE_NAME = "table_name"
+BUFFER_SIZE = 1_000
 
 
 class JiraComponent(ComponentBase):
@@ -198,11 +199,10 @@ class JiraComponent(ComponentBase):
     async def get_and_write_users(self):
         wr = JiraWriter(self.tables_out_path, "users", self.cfg.incremental)
         buffer = []
-        buffer_size = 100  # Adjust this based on memory constraints
 
         async for user in self.client.get_users():
             buffer.append(user)
-            if len(buffer) >= buffer_size:
+            if len(buffer) >= BUFFER_SIZE:
                 wr.writerows(buffer)
                 buffer = []
 
@@ -219,11 +219,10 @@ class JiraComponent(ComponentBase):
     async def get_and_write_organizations(self):
         wr = JiraWriter(self.tables_out_path, "organizations", self.cfg.incremental)
         buffer = []
-        buffer_size = 100
 
         async for organization in self.client.get_organizations():
             buffer.append(organization)
-            if len(buffer) >= buffer_size:
+            if len(buffer) >= BUFFER_SIZE:
                 wr.writerows(buffer)
                 buffer = []
 
@@ -236,12 +235,11 @@ class JiraComponent(ComponentBase):
         servicedesks = []
         wr = JiraWriter(self.tables_out_path, "servicedesks", self.cfg.incremental)
         buffer = []
-        buffer_size = 100
 
         async for desk in self.client.get_servicedesks():
             servicedesks.append(desk)
             buffer.append(desk)
-            if len(buffer) >= buffer_size:
+            if len(buffer) >= BUFFER_SIZE:
                 wr.writerows(buffer)
                 buffer = []
 
@@ -255,7 +253,7 @@ class JiraComponent(ComponentBase):
 
             async for customer in self.client.get_servicedesk_customers(organization["id"]):
                 buffer.append(customer)
-                if len(buffer) >= buffer_size:
+                if len(buffer) >= BUFFER_SIZE:
                     wr.writerows(buffer)
                     buffer = []
 
@@ -271,14 +269,13 @@ class JiraComponent(ComponentBase):
 
         wr = JiraWriter(self.tables_out_path, "worklogs", self.cfg.incremental)
         buffer = []
-        buffer_size = 100
 
         for i in range(0, total_worklogs, batch_size):
             batch_worklog_ids = worklog_ids[i:i + batch_size]
             async for worklog in self.client.get_worklogs(batch_worklog_ids):
                 worklog_out = {**worklog, **{"comment": self.parse_description(worklog.get("comment", "")).strip("\n")}}
                 buffer.append(worklog_out)
-                if len(buffer) >= buffer_size:
+                if len(buffer) >= BUFFER_SIZE:
                     wr.writerows(buffer)
                     buffer = []
 
@@ -291,7 +288,7 @@ class JiraComponent(ComponentBase):
 
         async for worklog in self.client.get_deleted_worklogs(self.param_since_unix):
             buffer.append(worklog)
-            if len(buffer) >= buffer_size:
+            if len(buffer) >= BUFFER_SIZE:
                 wr.writerows(buffer)
                 buffer = []
 
@@ -432,7 +429,6 @@ class JiraComponent(ComponentBase):
         sprint_writer = JiraWriter(self.tables_out_path, "sprints", self.cfg.incremental)
         all_sprints = []
         buffer = []
-        buffer_size = 100
 
         for board in _boards:
             async for sprint in self.client.get_board_sprints(board):
@@ -440,7 +436,7 @@ class JiraComponent(ComponentBase):
                     all_sprints.append(sprint["id"])
                 sprint_with_board = {**sprint, **{"board_id": board}}
                 buffer.append(sprint_with_board)
-                if len(buffer) >= buffer_size:
+                if len(buffer) >= BUFFER_SIZE:
                     sprint_writer.writerows(buffer)
                     buffer = []
 
@@ -455,7 +451,7 @@ class JiraComponent(ComponentBase):
             async for issue in self.client.get_sprint_issues(sprint, update_date=self.param_since_date):
                 issue_with_sprint = {**issue, **{"sprint_id": sprint}}
                 buffer.append(issue_with_sprint)
-                if len(buffer) >= buffer_size:
+                if len(buffer) >= BUFFER_SIZE:
                     issues_writer.writerows(buffer)
                     buffer = []
 
