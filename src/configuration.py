@@ -56,3 +56,4 @@ class Configuration(ConfigurationBase):
     incremental: int = 1
     organization_id: str = ""
     organization_url: str = ""
+    issues_changelog_pk_override: List[str] = field(default_factory=list)
