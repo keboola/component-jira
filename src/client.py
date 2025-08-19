@@ -111,43 +111,49 @@ class JiraClient(AsyncHttpClient):
 
         return all_changelogs
 
-    async def get_issues(self, update_date=None, offset=0, issue_jql_filter=None):
-        url_issues = urljoin(self.param_base_url, "search")
+    async def get_issues(
+        self,
+        update_date: str | None = None,
+        next_page_token: str | None = None,
+        issue_jql_filter: str | None = None,
+    ) -> tuple[list[dict], bool, str | None]:
+        url_issues = urljoin(self.param_base_url, "search/jql")
+
         if issue_jql_filter:
             param_jql = issue_jql_filter
         else:
             param_jql = f"updated >= {update_date}" if update_date else None
 
-        is_complete = False
-
-        params_issues = {
-            "startAt": offset,
+        payload: dict = {
             "jql": param_jql,
             "maxResults": MAX_RESULTS,
-            "expand": "changelog",
+            "expand": ["changelog"],
         }
 
+        if next_page_token:
+            payload["nextPageToken"] = next_page_token
+
         try:
-            rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+            rsp = await self.post_raw(endpoint=url_issues, json=payload)
+            if rsp.status_code == 200:
+                data = rsp.json()
+                issues = data.get("issues", [])
 
-            if rsp_issues.status_code == 200:
-                issues = rsp_issues.json()["issues"]
-
-                if len(issues) < MAX_RESULTS:
-                    is_complete = True
-
+                next_token = data.get("nextPageToken")
+                if "isLast" in data:
+                    is_complete = bool(data["isLast"])
                 else:
-                    offset += MAX_RESULTS
+                    is_complete = not bool(next_token)
 
-                return issues, is_complete, offset
-
+                return issues, is_complete, next_token
             else:
                 raise UserException(
-                    f"Could not download issues.Received: {rsp_issues.status_code} - {rsp_issues.text}."
+                    f"Could not download issues.Received: {rsp.status_code} - {rsp.text}."
                 )
-
         except httpx.HTTPStatusError as e:
-            raise UserException(f"Could not download issues.Received: {e.response.status_code} - {e.response.text}.")
+            raise UserException(
+                f"Could not download issues.Received: {e.response.status_code} - {e.response.text}."
+            )
 
     async def get_users(self):
         url_users = urljoin(self.param_base_url, "users")

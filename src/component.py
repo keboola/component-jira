@@ -296,7 +296,7 @@ class JiraComponent(ComponentBase):
         return text
 
     async def get_and_write_issues(self):
-        offset = 0
+        token = None
         is_complete = False
         download_further_changelogs = []
 
@@ -307,9 +307,9 @@ class JiraComponent(ComponentBase):
             writer_changelogs = JiraWriter(self.tables_out_path, "issues-changelogs", self.cfg.incremental)
 
         while is_complete is False:
-            issues, is_complete, offset = await self.client.get_issues(
+            issues, is_complete, token = await self.client.get_issues(
                 self.param_since_date,
-                offset=offset,
+                next_page_token=token,
                 issue_jql_filter=self.cfg.issue_jql_filter,
             )
             issues_f = []
