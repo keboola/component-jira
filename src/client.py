@@ -111,12 +111,7 @@ class JiraClient(AsyncHttpClient):
 
         return all_changelogs
 
-    async def get_issues(
-        self,
-        update_date: str | None = None,
-        next_page_token: str | None = None,
-        issue_jql_filter: str | None = None,
-    ) -> tuple[list[dict], bool, str | None]:
+    async def get_issues(self, update_date, next_page_token, issue_jql_filter):
         url_issues = urljoin(self.param_base_url, "search/jql")
 
         if issue_jql_filter:
