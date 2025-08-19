@@ -11,7 +11,7 @@ from keboola.component import ComponentBase, UserException
 from configuration import Configuration
 
 from client import JiraClient
-from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
+from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS, FIELDS_ISSUES
 
 KEY_JQL = "jql"
 KEY_TABLE_NAME = "table_name"
@@ -94,10 +94,7 @@ class JiraComponent(ComponentBase):
                     raise UserException("Custom JQL error: table name is empty, must be filled in")
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
                 stage_2_tasks.append(
-                    self.get_and_write_custom_jql(
-                        custom_jql.get(KEY_JQL),
-                        custom_jql.get(KEY_TABLE_NAME)
-                    )
+                    self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
                 )
 
         await asyncio.gather(*stage_2_tasks)
@@ -320,6 +317,7 @@ class JiraComponent(ComponentBase):
                 self.param_since_date,
                 next_page_token=token,
                 issue_jql_filter=self.cfg.issue_jql_filter,
+                fields=FIELDS_ISSUES,
             )
             issues_f = []
 

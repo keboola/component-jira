@@ -5,7 +5,6 @@ import sys
 
 csv.field_size_limit(sys.maxsize)  # to prevent _csv.Error: field larger than field limit
 
-
 FIELDS_ISSUES = [
     "id",
     "key",
@@ -109,32 +108,10 @@ FIELDS_R_ISSUES = [
     "versions",
 ]
 PK_ISSUES = ["id"]
-JSON_ISSUES = [
-    "fixVersions",
-    "components",
-    "subtasks",
-    "custom_fields",
-    "issuelinks",
-    "versions",
-    "labels",
-]
+JSON_ISSUES = ["fixVersions", "components", "subtasks", "custom_fields", "issuelinks", "versions"]
 
-FIELDS_USERS = [
-    "accountId",
-    "displayName",
-    "active",
-    "accountType",
-    "emailAddress",
-    "locale",
-]
-FIELDS_R_USERS = [
-    "account_id",
-    "display_name",
-    "active",
-    "account_type",
-    "email_address",
-    "locale",
-]
+FIELDS_USERS = ["accountId", "displayName", "active", "accountType", "emailAddress", "locale"]
+FIELDS_R_USERS = ["account_id", "display_name", "active", "account_type", "email_address", "locale"]
 PK_USERS = ["account_id"]
 JSON_USERS = []
 
@@ -331,24 +308,10 @@ JSON_SERVICEDESKS = []
 PK_SERVICEDESKS = ["id"]
 FIELDS_R_SERVICEDESKS = ["id", "projectId", "projectName", "projectKey", "_links"]
 
-FIELDS_SERVICEDESK_CUSTOMERS = [
-    "accountId",
-    "emailAddress",
-    "displayName",
-    "active",
-    "timeZone",
-    "_links_self",
-]
+FIELDS_SERVICEDESK_CUSTOMERS = ["accountId", "emailAddress", "displayName", "active", "timeZone", "_links_self"]
 JSON_SERVICEDESK_CUSTOMERS = []
 PK_SERVICEDESK_CUSTOMERS = ["accountId"]
-FIELDS_R_SERVICEDESK_CUSTOMERS = [
-    "accountId",
-    "emailAddress",
-    "displayName",
-    "active",
-    "timeZone",
-    "_links",
-]
+FIELDS_R_SERVICEDESK_CUSTOMERS = ["accountId", "emailAddress", "displayName", "active", "timeZone", "_links"]
 
 
 class JiraWriter:
@@ -390,59 +353,43 @@ class JiraWriter:
             extrasaction="ignore",
             quotechar='"',
             quoting=csv.QUOTE_ALL,
-            lineterminator="\n"
         )
 
     def close(self):
         self.csvfile.close()
 
-    def _sanitize_scalar(self, v):
-        if isinstance(v, str):
-            return v.replace("\x00", "\\0").replace("\r\n", "\n").replace("\r", "\n")
-        return v
-
-    def _sanitize_container(self, v):
-        if isinstance(v, dict):
-            return {k: self._sanitize_container(x) for k, x in v.items()}
-        if isinstance(v, list):
-            return [self._sanitize_container(x) for x in v]
-        return self._sanitize_scalar(v)
-
     def writerows(self, listToWrite, parentDict=None):
         for row in listToWrite:
             _cust = row.get("custom_fields", None)
 
-            row_sanit = self._sanitize_container(row)
-            row_f = self.flatten_json(x=row_sanit)
+            row_f = self.flatten_json(x=row)
             _dictToWrite = {}
-
-            for jf in self.paramJsonFields:
-                if jf in row_sanit:
-                    _dictToWrite[jf] = json.dumps(row_sanit[jf], ensure_ascii=False)
 
             for key, value in row_f.items():
                 if key in self.paramJsonFields:
-                    continue
+                    _dictToWrite[key] = json.dumps(value)
 
                 elif key in self.paramFields:
                     _dictToWrite[key] = value
+
+                else:
+                    continue
 
             if parentDict is not None:
                 _dictToWrite = {**_dictToWrite, **parentDict}
 
             if _cust is not None:
-                _dictToWrite = {**_dictToWrite, **{"custom_fields": json.dumps(_cust, ensure_ascii=False)}}
+                _dictToWrite = {**_dictToWrite, **{"custom_fields": json.dumps(_cust)}}
 
             self.writer.writerow(_dictToWrite)
 
     def flatten_json(self, x, out=None, name=""):
         if out is None:
-            out = {}
+            out = dict()
 
-        if isinstance(x, dict):
+        if type(x) is dict:
             for a in x:
                 self.flatten_json(x[a], out, name + a + "_")
-
         else:
             out[name[:-1]] = x
 

@@ -111,7 +111,7 @@ class JiraClient(AsyncHttpClient):
 
         return all_changelogs
 
-    async def get_issues(self, update_date, next_page_token, issue_jql_filter):
+    async def get_issues(self, update_date, next_page_token, issue_jql_filter, fields):
         url_issues = urljoin(self.param_base_url, "search/jql")
 
         if issue_jql_filter:
@@ -119,18 +119,13 @@ class JiraClient(AsyncHttpClient):
         else:
             param_jql = f"updated >= {update_date}" if update_date else None
 
-        payload: dict = {
-            "jql": param_jql,
-            "maxResults": MAX_RESULTS,
-            "expand": "changelog",
-            "fields": ["key", "summary", "issuetype", "status", "updated", "description"]
-        }
+        payload: dict = {"jql": param_jql, "maxResults": MAX_RESULTS, "expand": "changelog", "fields": fields}
 
         if next_page_token:
             payload["nextPageToken"] = next_page_token
 
         try:
-            rsp = await self.get_raw(endpoint=url_issues, params=payload)
+            rsp = await self.post_raw(endpoint=url_issues, json=payload)
             if rsp.status_code == 200:
                 data = rsp.json()
                 issues = data.get("issues", [])
@@ -143,13 +138,9 @@ class JiraClient(AsyncHttpClient):
 
                 return issues, is_complete, next_token
             else:
-                raise UserException(
-                    f"Could not download issues.Received: {rsp.status_code} - {rsp.text}."
-                )
+                raise UserException(f"Could not download issues.Received: {rsp.status_code} - {rsp.text}.")
         except httpx.HTTPStatusError as e:
-            raise UserException(
-                f"Could not download issues.Received: {e.response.status_code} - {e.response.text}."
-            )
+            raise UserException(f"Could not download issues.Received: {e.response.status_code} - {e.response.text}.")
 
     async def get_users(self):
         url_users = urljoin(self.param_base_url, "users")
@@ -482,7 +473,7 @@ class JiraClient(AsyncHttpClient):
             params_issues["nextPageToken"] = next_token
 
         try:
-            rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+            rsp_issues = await self.post_raw(endpoint=url_issues, json=params_issues)
 
             if rsp_issues.status_code == 200:
                 data = rsp_issues.json()
