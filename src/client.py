@@ -122,14 +122,15 @@ class JiraClient(AsyncHttpClient):
         payload: dict = {
             "jql": param_jql,
             "maxResults": MAX_RESULTS,
-            "expand": ["changelog"],
+            "expand": "changelog",
+            "fields": ["key", "summary", "issuetype", "status", "updated", "description"]
         }
 
         if next_page_token:
             payload["nextPageToken"] = next_page_token
 
         try:
-            rsp = await self.get_raw(endpoint=url_issues, json=payload)
+            rsp = await self.get_raw(endpoint=url_issues, params=payload)
             if rsp.status_code == 200:
                 data = rsp.json()
                 issues = data.get("issues", [])
