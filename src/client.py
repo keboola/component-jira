@@ -119,7 +119,7 @@ class JiraClient(AsyncHttpClient):
         else:
             param_jql = f"updated >= {update_date}" if update_date else None
 
-        payload: dict = {"jql": param_jql, "maxResults": MAX_RESULTS, "expand": "changelog", "fields": fields}
+        payload = {"jql": param_jql, "maxResults": MAX_RESULTS, "expand": "changelog", "fields": fields}
 
         if next_page_token:
             payload["nextPageToken"] = next_page_token
