@@ -129,7 +129,7 @@ class JiraClient(AsyncHttpClient):
             payload["nextPageToken"] = next_page_token
 
         try:
-            rsp = await self.post_raw(endpoint=url_issues, json=payload)
+            rsp = await self.get_raw(endpoint=url_issues, json=payload)
             if rsp.status_code == 200:
                 data = rsp.json()
                 issues = data.get("issues", [])
