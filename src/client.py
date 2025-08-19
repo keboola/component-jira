@@ -31,7 +31,7 @@ class JiraClient(AsyncHttpClient):
         )
 
     async def get_projects(self):
-        url_projects = urljoin(self.base_url, "project")
+        url_projects = urljoin(self.param_base_url, "project")
         par_projects = {"expand": "description"}
 
         try:
@@ -56,7 +56,7 @@ class JiraClient(AsyncHttpClient):
                 )
 
     async def get_comments(self, issue_id: str):
-        url_comments = urljoin(self.base_url, f"issue/{issue_id}/comment")
+        url_comments = urljoin(self.param_base_url, f"issue/{issue_id}/comment")
 
         params = {"expand": "properties"}
 
@@ -77,7 +77,7 @@ class JiraClient(AsyncHttpClient):
         return comments
 
     async def get_changelogs(self, issue_key):
-        url_changelogs = urljoin(self.base_url, f"issue/{issue_key}/changelog")
+        url_changelogs = urljoin(self.param_base_url, f"issue/{issue_key}/changelog")
         offset = 0
         all_changelogs = []
         is_complete = False
@@ -383,7 +383,7 @@ class JiraClient(AsyncHttpClient):
         return all_worklogs
 
     async def get_worklogs(self, worklog_ids):
-        url_worklogs = urljoin(self.base_url, "worklog/list")
+        url_worklogs = urljoin(self.param_base_url, "worklog/list")
         list_gen = self.split_list_to_chunks(worklog_ids, 1000)
         all_worklogs = []
 
