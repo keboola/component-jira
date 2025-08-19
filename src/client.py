@@ -468,30 +468,33 @@ class JiraClient(AsyncHttpClient):
 
         return all_boards
 
-    async def get_custom_jql(self, jql, offset=0):
-        url_issues = urljoin(self.param_base_url, "search")
+    async def get_custom_jql(self, jql, next_token):
+        url_issues = urljoin(self.param_base_url, "search/jql")
         is_complete = False
 
         params_issues = {
-            "startAt": offset,
             "jql": jql,
             "maxResults": MAX_RESULTS,
             "expand": "changelog",
         }
 
+        if next_token:
+            params_issues["nextPageToken"] = next_token
+
         try:
             rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
 
             if rsp_issues.status_code == 200:
-                issues = rsp_issues.json()["issues"]
+                data = rsp_issues.json()
+                issues = data["issues"]
 
-                if len(issues) < MAX_RESULTS:
-                    is_complete = True
-
+                next_token = data.get("nextPageToken")
+                if "isLast" in data:
+                    is_complete = bool(data["isLast"])
                 else:
-                    offset += MAX_RESULTS
+                    is_complete = not bool(next_token)
 
-                return issues, is_complete, offset
+                return issues, is_complete, next_token
 
             else:
                 raise UserException(

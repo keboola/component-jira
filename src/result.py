@@ -116,6 +116,7 @@ JSON_ISSUES = [
     "custom_fields",
     "issuelinks",
     "versions",
+    "labels",
 ]
 
 FIELDS_USERS = [
@@ -389,43 +390,59 @@ class JiraWriter:
             extrasaction="ignore",
             quotechar='"',
             quoting=csv.QUOTE_ALL,
+            lineterminator="\n"
         )
 
     def close(self):
         self.csvfile.close()
 
+    def _sanitize_scalar(self, v):
+        if isinstance(v, str):
+            return v.replace("\x00", "\\0").replace("\r\n", "\n").replace("\r", "\n")
+        return v
+
+    def _sanitize_container(self, v):
+        if isinstance(v, dict):
+            return {k: self._sanitize_container(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [self._sanitize_container(x) for x in v]
+        return self._sanitize_scalar(v)
+
     def writerows(self, listToWrite, parentDict=None):
         for row in listToWrite:
             _cust = row.get("custom_fields", None)
 
-            row_f = self.flatten_json(x=row)
+            row_sanit = self._sanitize_container(row)
+            row_f = self.flatten_json(x=row_sanit)
             _dictToWrite = {}
+
+            for jf in self.paramJsonFields:
+                if jf in row_sanit:
+                    _dictToWrite[jf] = json.dumps(row_sanit[jf], ensure_ascii=False)
 
             for key, value in row_f.items():
                 if key in self.paramJsonFields:
-                    _dictToWrite[key] = json.dumps(value)
+                    continue
 
                 elif key in self.paramFields:
                     _dictToWrite[key] = value
-
-                else:
-                    continue
 
             if parentDict is not None:
                 _dictToWrite = {**_dictToWrite, **parentDict}
 
             if _cust is not None:
-                _dictToWrite = {**_dictToWrite, **{"custom_fields": json.dumps(_cust)}}
+                _dictToWrite = {**_dictToWrite, **{"custom_fields": json.dumps(_cust, ensure_ascii=False)}}
 
             self.writer.writerow(_dictToWrite)
 
     def flatten_json(self, x, out=None, name=""):
         if out is None:
-            out = dict()
+            out = {}
 
-        if type(x) is dict:
+        if isinstance(x, dict):
             for a in x:
                 self.flatten_json(x[a], out, name + a + "_")
+
         else:
             out[name[:-1]] = x
 
