@@ -111,7 +111,7 @@ class JiraClient(AsyncHttpClient):
 
         return all_changelogs
 
-    async def get_issues(self, update_date, next_page_token, issue_jql_filter, fields):
+    async def get_issues(self, update_date, next_page_token, issue_jql_filter):
         url_issues = urljoin(self.param_base_url, "search/jql")
 
         if issue_jql_filter:
@@ -119,7 +119,7 @@ class JiraClient(AsyncHttpClient):
         else:
             param_jql = f"updated >= {update_date}" if update_date else None
 
-        payload = {"jql": param_jql, "maxResults": MAX_RESULTS, "expand": "changelog", "fields": fields}
+        payload = {"jql": param_jql, "maxResults": MAX_RESULTS, "expand": "changelog", "fields": ["*all"]}
 
         if next_page_token:
             payload["nextPageToken"] = next_page_token
@@ -467,6 +467,7 @@ class JiraClient(AsyncHttpClient):
             "jql": jql,
             "maxResults": MAX_RESULTS,
             "expand": "changelog",
+            "fields": ["*all"]
         }
 
         if next_token:

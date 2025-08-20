@@ -11,7 +11,7 @@ from keboola.component import ComponentBase, UserException
 from configuration import Configuration
 
 from client import JiraClient
-from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS, FIELDS_ISSUES
+from result import JiraWriter, FIELDS_R_ISSUES, FIELDS_COMMENTS, PK_COMMENTS
 
 KEY_JQL = "jql"
 KEY_TABLE_NAME = "table_name"
@@ -316,14 +316,12 @@ class JiraComponent(ComponentBase):
             issues, is_complete, token = await self.client.get_issues(
                 self.param_since_date,
                 next_page_token=token,
-                issue_jql_filter=self.cfg.issue_jql_filter,
-                fields=FIELDS_ISSUES,
+                issue_jql_filter=self.cfg.issue_jql_filter
             )
             issues_f = []
 
             for issue in issues:
                 _out = {"id": issue["id"], "key": issue["key"]}
-                _out["project_key"] = issue["fields"]["project"]["key"]
 
                 _custom = {}
 
