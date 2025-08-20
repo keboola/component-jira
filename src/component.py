@@ -323,6 +323,7 @@ class JiraComponent(ComponentBase):
 
             for issue in issues:
                 _out = {"id": issue["id"], "key": issue["key"]}
+                _out["project_key"] = issue["fields"]["project"]["key"]
 
                 _custom = {}
 
