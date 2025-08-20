@@ -12,7 +12,7 @@ FIELDS_ISSUES = [
     "issuetype_id",
     "issuetype_name",
     "timespent",
-    "project_key",
+    "project",
     "fixVersions",
     "aggregatetimespent",
     "resolution",
