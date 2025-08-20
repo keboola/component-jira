@@ -423,12 +423,12 @@ class JiraComponent(ComponentBase):
         issues_writer.close()
 
     async def get_and_write_custom_jql(self, jql, table_name):
-        offset = 0
+        token = None
         is_complete = False
         writer_issues = JiraWriter(self.tables_out_path, "issues", self.cfg.incremental, custom_name=table_name)
 
         while is_complete is False:
-            issues, is_complete, offset = await self.client.get_custom_jql(jql, offset=offset)
+            issues, is_complete, token = await self.client.get_custom_jql(jql, next_page_token=token)
             issues_f = []
             for issue in issues:
                 _out = {"id": issue["id"], "key": issue["key"]}

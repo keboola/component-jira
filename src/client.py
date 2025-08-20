@@ -459,7 +459,7 @@ class JiraClient(AsyncHttpClient):
 
         return all_boards
 
-    async def get_custom_jql(self, jql, next_token):
+    async def get_custom_jql(self, jql, next_page_token):
         url_issues = urljoin(self.param_base_url, "search/jql")
         is_complete = False
 
@@ -470,8 +470,8 @@ class JiraClient(AsyncHttpClient):
             "fields": ["*all"]
         }
 
-        if next_token:
-            params_issues["nextPageToken"] = next_token
+        if next_page_token:
+            params_issues["nextPageToken"] = next_page_token
 
         try:
             rsp_issues = await self.post_raw(endpoint=url_issues, json=params_issues)
