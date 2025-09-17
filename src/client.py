@@ -105,9 +105,10 @@ class JiraClient(AsyncHttpClient):
 
         return all_changelogs
 
-    async def get_issues(self, update_date=None, offset=0, issue_jql_filter=None):
+    async def get_issues(self, update_date, next_page_token, issue_jql_filter):
 
-        url_issues = urljoin(self.param_base_url, 'search')
+        url_issues = urljoin(self.param_base_url, 'search/jql')
+
         if issue_jql_filter:
             param_jql = issue_jql_filter
         else:
@@ -115,26 +116,30 @@ class JiraClient(AsyncHttpClient):
 
         is_complete = False
 
-        params_issues = {
-            'startAt': offset,
+        payload = {
             'jql': param_jql,
             'maxResults': MAX_RESULTS,
-            'expand': 'changelog'
+            'expand': 'changelog',
+            'fields': ['*all']
         }
 
+        if next_page_token:
+            payload["nextPageToken"] = next_page_token
+
         try:
-            rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+            rsp_issues = await self.post_raw(endpoint=url_issues, json=payload)
 
             if rsp_issues.status_code == 200:
-                issues = rsp_issues.json()['issues']
+                data = rsp_issues.json()
+                issues = data.get('issues', [])
 
-                if len(issues) < MAX_RESULTS:
-                    is_complete = True
-
+                next_token = data.get('nextPageToken')
+                if "isLast" in data:
+                    is_complete = bool(data["isLast"])
                 else:
-                    offset += MAX_RESULTS
+                    is_complete = not bool(next_token)
 
-                return issues, is_complete, offset
+                return issues, is_complete, next_token
 
             else:
                 raise UserException(f"Could not download issues."
@@ -475,30 +480,34 @@ class JiraClient(AsyncHttpClient):
 
         return all_boards
 
-    async def get_custom_jql(self, jql, offset=0):
-        url_issues = urljoin(self.param_base_url, 'search')
+    async def get_custom_jql(self, jql, next_page_token):
+        url_issues = urljoin(self.param_base_url, 'search/jql')
         is_complete = False
 
-        params_issues = {
-            'startAt': offset,
+        payload = {
             'jql': jql,
             'maxResults': MAX_RESULTS,
-            'expand': 'changelog'
+            'expand': 'changelog',
+            'fields': ['*all']
         }
 
+        if next_page_token:
+            payload["nextPageToken"] = next_page_token
+
         try:
-            rsp_issues = await self.get_raw(endpoint=url_issues, params=params_issues)
+            rsp_issues = await self.post_raw(endpoint=url_issues, json=payload)
 
             if rsp_issues.status_code == 200:
-                issues = rsp_issues.json()['issues']
+                data = rsp_issues.json()
+                issues = data.get('issues', [])
 
-                if len(issues) < MAX_RESULTS:
-                    is_complete = True
-
+                next_token = data.get("nextPageToken")
+                if "isLast" in data:
+                    is_complete = bool(data["isLast"])
                 else:
-                    offset += MAX_RESULTS
+                    is_complete = not bool(next_token)
 
-                return issues, is_complete, offset
+                return issues, is_complete, next_token
 
             else:
                 raise UserException(f"Could not download custom JQL."

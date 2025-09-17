@@ -294,71 +294,70 @@ class JiraComponent(ComponentBase):
         return text
 
     async def get_and_write_issues(self):
-        offset = 0
+        token = None
         is_complete = False
         download_further_changelogs = []
 
-        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.cfg.incremental)
+        writer_issues = JiraWriter(self.tables_out_path, "issues", self.cfg.incremental)
 
         writer_changelogs = None
-        if 'issues_changelogs' in self.cfg.datasets:
-            writer_changelogs = JiraWriter(
-                tableOutPath=self.tables_out_path,
-                tableName='issues-changelogs',
-                incremental=self.cfg.incremental,
-                pk_override=self.cfg.issues_changelog_pk_override,
-            )
+        if "issues_changelogs" in self.cfg.datasets:
+            writer_changelogs = JiraWriter(self.tables_out_path, "issues-changelogs", self.cfg.incremental)
 
         while is_complete is False:
-
-            issues, is_complete, offset = await self.client.get_issues(self.param_since_date, offset=offset,
-                                                                       issue_jql_filter=self.cfg.issue_jql_filter)
+            issues, is_complete, token = await self.client.get_issues(
+                self.param_since_date,
+                next_page_token=token,
+                issue_jql_filter=self.cfg.issue_jql_filter
+            )
             issues_f = []
 
             for issue in issues:
-
-                _out = {
-                    'id': issue['id'],
-                    'key': issue['key']
-                }
+                _out = {"id": issue["id"], "key": issue["key"]}
 
                 _custom = {}
 
-                for key, value in issue['fields'].items():
-                    if 'customfield_' in key:
+                for key, value in issue["fields"].items():
+                    if "customfield_" in key:
                         _custom[key] = value
-                    elif key == 'description':
-                        _out['description'] = self.parse_description(issue['fields']['description']
-                                                                     ).strip('\n').replace("\0", "\\0")
+                    elif key == "description":
+                        _out["description"] = (
+                            self.parse_description(issue["fields"]["description"]).strip("\n").replace("\0", "\\0")
+                        )
                     else:
                         _out[key] = value
 
-                _out['custom_fields'] = _custom
+                _out["custom_fields"] = _custom
                 issues_f += [copy.deepcopy(_out)]
 
-                if 'issues_changelogs' in self.cfg.datasets:
-                    _changelog = issue['changelog']
+                if "issues_changelogs" in self.cfg.datasets:
+                    _changelog = issue["changelog"]
 
-                    if _changelog['maxResults'] < _changelog['total']:
-                        download_further_changelogs += [(issue['id'], issue['key'])]
+                    if _changelog["maxResults"] < _changelog["total"]:
+                        download_further_changelogs += [(issue["id"], issue["key"])]
 
                     else:
                         all_changelogs = []
-                        _changelogs = [{**x, **{'issue_id': issue['id'], 'issue_key': issue['key']}}
-                                       for x in _changelog['histories']]
+                        _changelogs = [
+                            {
+                                **x,
+                                **{"issue_id": issue["id"], "issue_key": issue["key"]},
+                            }
+                            for x in _changelog["histories"]
+                        ]
 
                         for changelog in _changelogs:
                             _out = dict()
-                            _out['total_changed_items'] = len(changelog['items'])
-                            _out['id'] = changelog['id']
-                            _out['issue_id'] = changelog['issue_id']
-                            _out['issue_key'] = changelog['issue_key']
-                            _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
-                            _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
-                            _out['created'] = changelog['created']
+                            _out["total_changed_items"] = len(changelog["items"])
+                            _out["id"] = changelog["id"]
+                            _out["issue_id"] = changelog["issue_id"]
+                            _out["issue_key"] = changelog["issue_key"]
+                            _out["author_accountId"] = changelog.get("author", {}).get("accountId", "")
+                            _out["author_emailAddress"] = changelog.get("author", {}).get("emailAddress", "")
+                            _out["created"] = changelog["created"]
 
-                            for idx, item in enumerate(changelog['items'], start=1):
-                                item['changed_item_order'] = idx
+                            for idx, item in enumerate(changelog["items"], start=1):
+                                item["changed_item_order"] = idx
                                 all_changelogs += [{**_out, **item}]
 
                         writer_changelogs.writerows(all_changelogs)
@@ -369,21 +368,23 @@ class JiraComponent(ComponentBase):
 
         for issue in download_further_changelogs:
             all_changelogs = []
-            _changelogs = [{**c, **{'issue_id': issue[0], 'issue_key': issue[1]}}
-                           for c in await self.client.get_changelogs(issue[1])]
+            _changelogs = [
+                {**c, **{"issue_id": issue[0], "issue_key": issue[1]}}
+                for c in await self.client.get_changelogs(issue[1])
+            ]
 
             for changelog in _changelogs:
                 _out = dict()
-                _out['total_changed_items'] = len(changelog['items'])
-                _out['id'] = changelog['id']
-                _out['issue_id'] = changelog['issue_id']
-                _out['issue_key'] = changelog['issue_key']
-                _out['author_accountId'] = changelog.get('author', {}).get('accountId', '')
-                _out['author_emailAddress'] = changelog.get('author', {}).get('emailAddress', '')
-                _out['created'] = changelog['created']
+                _out["total_changed_items"] = len(changelog["items"])
+                _out["id"] = changelog["id"]
+                _out["issue_id"] = changelog["issue_id"]
+                _out["issue_key"] = changelog["issue_key"]
+                _out["author_accountId"] = changelog.get("author", {}).get("accountId", "")
+                _out["author_emailAddress"] = changelog.get("author", {}).get("emailAddress", "")
+                _out["created"] = changelog["created"]
 
-                for idx, item in enumerate(changelog['items'], start=1):
-                    item['changed_item_order'] = idx
+                for idx, item in enumerate(changelog["items"], start=1):
+                    item["changed_item_order"] = idx
                     all_changelogs += [{**_out, **item}]
 
             writer_changelogs.writerows(all_changelogs)
@@ -414,28 +415,25 @@ class JiraComponent(ComponentBase):
         issues_writer.close()
 
     async def get_and_write_custom_jql(self, jql, table_name):
-        offset = 0
+        token = None
         is_complete = False
-        writer_issues = JiraWriter(self.tables_out_path, 'issues', self.cfg.incremental, custom_name=table_name)
+        writer_issues = JiraWriter(self.tables_out_path, "issues", self.cfg.incremental, custom_name=table_name)
 
         while is_complete is False:
-            issues, is_complete, offset = await self.client.get_custom_jql(jql, offset=offset)
+            issues, is_complete, token = await self.client.get_custom_jql(jql, next_page_token=token)
             issues_f = []
             for issue in issues:
-                _out = {
-                    'id': issue['id'],
-                    'key': issue['key']
-                }
+                _out = {"id": issue["id"], "key": issue["key"]}
                 _custom = {}
-                for key, value in issue['fields'].items():
-                    if 'customfield_' in key:
+                for key, value in issue["fields"].items():
+                    if "customfield_" in key:
                         _custom[key] = value
-                    elif key == 'description':
-                        _out['description'] = self.parse_description(issue['fields']['description']).strip('\n')
+                    elif key == "description":
+                        _out["description"] = self.parse_description(issue["fields"]["description"]).strip("\n")
                     else:
                         _out[key] = value
 
-                _out['custom_fields'] = _custom
+                _out["custom_fields"] = _custom
                 issues_f += [copy.deepcopy(_out)]
             writer_issues.writerows(issues_f)
         writer_issues.close()
