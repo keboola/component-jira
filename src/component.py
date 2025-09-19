@@ -311,7 +311,12 @@ class JiraComponent(ComponentBase):
 
         writer_changelogs = None
         if "issues_changelogs" in self.cfg.datasets:
-            writer_changelogs = JiraWriter(self.tables_out_path, "issues-changelogs", self.cfg.incremental)
+            writer_changelogs = JiraWriter(
+                tableOutPath=self.tables_out_path,
+                tableName='issues-changelogs',
+                incremental=self.cfg.incremental,
+                pk_override=self.cfg.issues_changelog_pk_override,
+            )
 
         while is_complete is False:
             issues, is_complete, token = await self.client.get_issues(
