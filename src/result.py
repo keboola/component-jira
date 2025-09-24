@@ -315,10 +315,10 @@ FIELDS_R_SERVICEDESK_CUSTOMERS = ["accountId", "emailAddress", "displayName", "a
 
 
 class JiraWriter:
-    def __init__(self, tableOutPath, tableName, incremental, custom_name=""):
+    def __init__(self, tableOutPath, tableName, incremental, custom_name="", pk_override=None):
         self.paramFields = eval(f"FIELDS_{tableName.upper().replace('-', '_')}")
         self.paramJsonFields = eval(f"JSON_{tableName.upper().replace('-', '_')}")
-        self.paramPrimaryKey = eval(f"PK_{tableName.upper().replace('-', '_')}")
+        self.paramPrimaryKey = pk_override or eval(f"PK_{tableName.upper().replace('-', '_')}")
         self.paramFieldsRenamed = eval(f"FIELDS_R_{tableName.upper().replace('-', '_')}")
         self.paramPath = tableOutPath
         self.paramTableName = tableName

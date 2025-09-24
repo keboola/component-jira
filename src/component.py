@@ -46,15 +46,16 @@ class JiraComponent(ComponentBase):
 
     async def run_async(self):
         stage_1_tasks = []
+        stage_2_tasks = []
 
         logging.info("Downloading projects.")
-        stage_1_tasks.append(self.get_and_write_projects())
+        stage_1_tasks.append(asyncio.create_task(self.get_and_write_projects()))
 
         logging.info("Downloading a list of fields.")
-        stage_1_tasks.append(self.get_and_write_fields())
+        stage_1_tasks.append(asyncio.create_task(self.get_and_write_fields()))
 
         logging.info("Downloading users.")
-        stage_1_tasks.append(self.get_and_write_users())
+        stage_1_tasks.append(asyncio.create_task(self.get_and_write_users()))
 
         self.check_issues_param()
 
@@ -64,27 +65,25 @@ class JiraComponent(ComponentBase):
 
             if "comments" in self.cfg.datasets:
                 logging.info("Downloading comments")
-                stage_1_tasks.append(self.get_and_write_comments())
+                stage_1_tasks.append(asyncio.create_task(self.get_and_write_comments()))
 
         await asyncio.gather(*stage_1_tasks)
 
-        stage_2_tasks = []
-
         if "boards_n_sprints" in self.cfg.datasets:
             logging.info("Downloading boards and sprints.")
-            stage_2_tasks.append(self.get_and_write_boards_and_sprints())
+            stage_2_tasks.append(asyncio.create_task(self.get_and_write_boards_and_sprints()))
 
         if "worklogs" in self.cfg.datasets:
             logging.info("Downloading worklogs.")
-            stage_2_tasks.append(self.get_and_write_worklogs())
+            stage_2_tasks.append(asyncio.create_task(self.get_and_write_worklogs()))
 
         if "organizations" in self.cfg.datasets:
             logging.info("Downloading organizations.")
-            stage_2_tasks.append(self.get_and_write_organizations())
+            stage_2_tasks.append(asyncio.create_task(self.get_and_write_organizations()))
 
         if "servicedesks_and_customers" in self.cfg.datasets:
             logging.info("Downloading servicedesks and customers.")
-            stage_2_tasks.append(self.get_and_write_servicedesks_and_customers())
+            stage_2_tasks.append(asyncio.create_task(self.get_and_write_servicedesks_and_customers()))
 
         if self.cfg.custom_jql:
             for custom_jql in self.cfg.custom_jql:
@@ -94,7 +93,12 @@ class JiraComponent(ComponentBase):
                     raise UserException("Custom JQL error: table name is empty, must be filled in")
                 logging.info(f"Downloading custom JQL : {custom_jql.get(KEY_JQL)}")
                 stage_2_tasks.append(
-                    self.get_and_write_custom_jql(custom_jql.get(KEY_JQL), custom_jql.get(KEY_TABLE_NAME))
+                    asyncio.create_task(
+                        self.get_and_write_custom_jql(
+                            custom_jql.get(KEY_JQL),
+                            custom_jql.get(KEY_TABLE_NAME)
+                        )
+                    )
                 )
 
         await asyncio.gather(*stage_2_tasks)
@@ -310,7 +314,12 @@ class JiraComponent(ComponentBase):
 
         writer_changelogs = None
         if "issues_changelogs" in self.cfg.datasets:
-            writer_changelogs = JiraWriter(self.tables_out_path, "issues-changelogs", self.cfg.incremental)
+            writer_changelogs = JiraWriter(
+                tableOutPath=self.tables_out_path,
+                tableName='issues-changelogs',
+                incremental=self.cfg.incremental,
+                pk_override=self.cfg.issues_changelog_pk_override,
+            )
 
         while is_complete is False:
             issues, is_complete, token = await self.client.get_issues(
