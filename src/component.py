@@ -153,7 +153,8 @@ class JiraComponent(ComponentBase):
             if comment.get("properties"):
                 for prop in comment["properties"]:
                     if prop.get("key") == "sd.public.comment":
-                        public_visibility = prop.get("value", {}).get("internal")
+                        internal_flag = prop.get("value", {}).get("internal")
+                        public_visibility = not internal_flag if internal_flag is not None else None
                         break
 
             result.append(
