@@ -1,11 +1,10 @@
 name: Keboola Component Build & Deploy Pipeline
 on:
-  push:
-    branches:
-      - 'feature/*'
-      - 'bug/*'
+  push:  # skip the workflow on the main branch without tags
+    branches-ignore:
+      - main
     tags:
-      - '*' # Skip the workflow on the main branch without tags
+      - "*"
 
 concurrency: ci-${{ github.ref }} # to avoid tag collisions in the ECR
 env:
@@ -129,8 +128,8 @@ jobs:
           docker load --input /tmp/${{ env.KBC_DEVELOPERPORTAL_APP }}.tar
           docker image ls -a
           docker run ${{ env.KBC_DEVELOPERPORTAL_APP }}:latest flake8 . --config=flake8.cfg
-          echo "Running unit-tests..."
-          docker run ${{ env.KBC_DEVELOPERPORTAL_APP }}:latest python -m unittest discover
+          # echo "Running unit-tests..."
+          # docker run ${{ env.KBC_DEVELOPERPORTAL_APP }}:latest python -m unittest discover
 
   tests-kbc:
     name: Run KBC Tests

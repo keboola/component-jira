@@ -149,12 +149,14 @@ class JiraComponent(ComponentBase):
             body_text = self.merge_text_and_mentions(comment)
             update_author = comment.get("updateAuthor", {})
             # Check if the comment has properties and parse public visibility if present
-            public_visibility = None
-            if comment.get("properties"):
-                for prop in comment["properties"]:
+            public_visibility = True
+            if properties := comment.get("properties"):
+                for prop in properties:
                     if prop.get("key") == "sd.public.comment":
-                        public_visibility = prop.get("value", {}).get("internal")
-                        break
+                        val = prop.get("value") or {}
+                        if "internal" in val:
+                            public_visibility = not val["internal"]
+                            break
 
             result.append(
                 {
