@@ -1,1 +1,1 @@
-Jira is a proprietary issue tracking product developed by Atlassian that allows bug tracking and agile project management.
+Extracts issues, worklogs, comments, boards, and sprints from Jira.
